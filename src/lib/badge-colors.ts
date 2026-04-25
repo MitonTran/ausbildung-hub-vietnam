@@ -77,24 +77,25 @@ export function levelColor(level: string): string {
 // News & community categories — solid backgrounds so they stay readable when
 // rendered on top of cover photos.
 const CATEGORY_PALETTE: Record<string, string> = {
-  // News
+  // News — explicit dark:text-* so the Badge variant's default dark text color
+  // (e.g. dark:text-cyan-300) doesn't leak through tailwind-merge.
   "Chính sách":
-    "bg-blue-600 text-white border-blue-500 shadow-sm dark:bg-blue-500 dark:border-blue-300",
+    "bg-blue-600 text-white border-blue-500 shadow-sm dark:bg-blue-500 dark:text-white dark:border-blue-300",
   "Thị trường":
-    "bg-cyan-600 text-white border-cyan-500 shadow-sm dark:bg-cyan-500 dark:border-cyan-300",
+    "bg-cyan-600 text-white border-cyan-500 shadow-sm dark:bg-cyan-500 dark:text-white dark:border-cyan-300",
   "Kinh nghiệm":
-    "bg-violet-600 text-white border-violet-500 shadow-sm dark:bg-violet-500 dark:border-violet-300",
+    "bg-violet-600 text-white border-violet-500 shadow-sm dark:bg-violet-500 dark:text-white dark:border-violet-300",
   "Học bổng":
-    "bg-emerald-600 text-white border-emerald-500 shadow-sm dark:bg-emerald-500 dark:border-emerald-300",
+    "bg-emerald-600 text-white border-emerald-500 shadow-sm dark:bg-emerald-500 dark:text-white dark:border-emerald-300",
   "Tài trợ":
     "bg-amber-500 text-amber-950 border-amber-400 shadow-sm dark:bg-amber-400 dark:text-amber-950 dark:border-amber-300",
   // Community
   "Hỏi đáp":
-    "bg-fuchsia-600 text-white border-fuchsia-500 shadow-sm dark:bg-fuchsia-500 dark:border-fuchsia-300",
+    "bg-fuchsia-600 text-white border-fuchsia-500 shadow-sm dark:bg-fuchsia-500 dark:text-white dark:border-fuchsia-300",
   "Hồ sơ":
-    "bg-indigo-600 text-white border-indigo-500 shadow-sm dark:bg-indigo-500 dark:border-indigo-300",
+    "bg-indigo-600 text-white border-indigo-500 shadow-sm dark:bg-indigo-500 dark:text-white dark:border-indigo-300",
   "Việc làm":
-    "bg-rose-600 text-white border-rose-500 shadow-sm dark:bg-rose-500 dark:border-rose-300",
+    "bg-rose-600 text-white border-rose-500 shadow-sm dark:bg-rose-500 dark:text-white dark:border-rose-300",
   "Thông báo":
     "bg-amber-600 text-amber-50 border-amber-500 shadow-sm dark:bg-amber-500 dark:text-amber-950 dark:border-amber-300",
 };
@@ -102,6 +103,6 @@ const CATEGORY_PALETTE: Record<string, string> = {
 export function categoryColor(cat: string): string {
   return (
     CATEGORY_PALETTE[cat] ??
-    "bg-cyan-600 text-white border-cyan-500 shadow-sm dark:bg-cyan-500 dark:border-cyan-300"
+    "bg-cyan-600 text-white border-cyan-500 shadow-sm dark:bg-cyan-500 dark:text-white dark:border-cyan-300"
   );
 }
