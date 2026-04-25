@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Clock, Eye, MessageCircle, Share2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { categoryColor } from "@/lib/badge-colors";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { NewsCard } from "@/components/cards/news-card";
@@ -30,7 +31,12 @@ export default function ArticleDetailPage({ params }: { params: { slug: string }
 
       <article className="mx-auto max-w-3xl space-y-6">
         <header className="space-y-3">
-          <Badge variant={article.is_sponsored ? "sponsored" : "editorial"}>
+          <Badge
+            variant="default"
+            className={
+              article.is_sponsored ? categoryColor("Tài trợ") : categoryColor(article.category)
+            }
+          >
             {article.is_sponsored ? "Tài trợ" : article.category}
           </Badge>
           <h1 className="text-3xl md:text-4xl font-black leading-tight tracking-tight">
@@ -83,7 +89,7 @@ export default function ArticleDetailPage({ params }: { params: { slug: string }
 
         <div className="flex flex-wrap gap-2">
           {article.tags.map((t) => (
-            <Badge key={t} variant="outline">
+            <Badge key={t} variant="tag">
               #{t}
             </Badge>
           ))}

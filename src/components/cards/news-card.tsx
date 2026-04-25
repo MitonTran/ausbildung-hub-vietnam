@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import type { Article } from "@/types";
 import { relativeTime } from "@/lib/utils";
+import { categoryColor } from "@/lib/badge-colors";
 
 export function NewsCard({ article, compact = false }: { article: Article; compact?: boolean }) {
   return (
@@ -24,7 +25,14 @@ export function NewsCard({ article, compact = false }: { article: Article; compa
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
             <div className="absolute left-2 top-2 flex gap-1.5">
-              <Badge variant={article.is_sponsored ? "sponsored" : "editorial"}>
+              <Badge
+                variant="default"
+                className={
+                  article.is_sponsored
+                    ? categoryColor("Tài trợ")
+                    : categoryColor(article.category)
+                }
+              >
                 {article.is_sponsored ? "Tài trợ" : article.category}
               </Badge>
             </div>

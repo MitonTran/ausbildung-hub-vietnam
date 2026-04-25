@@ -122,7 +122,7 @@ export default function CompanyDirectoryPage() {
                   </td>
                   <td className="p-3">
                     {c.verification_status === "verified" ? (
-                      <Badge variant="success">
+                      <Badge variant="verified">
                         <ShieldCheck className="h-3 w-3" /> Verified
                       </Badge>
                     ) : (

@@ -18,7 +18,7 @@ export function CompanyCard({ company }: { company: Company }) {
               {company.name}
             </h3>
             {company.verification_status === "verified" && (
-              <Badge variant="success" className="shrink-0">
+              <Badge variant="verified" className="shrink-0">
                 <ShieldCheck className="h-3 w-3" /> Verified
               </Badge>
             )}
