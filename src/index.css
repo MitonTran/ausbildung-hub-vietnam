@@ -1,0 +1,84 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light dark;
+}
+
+html, body, #root { height: 100%; }
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #fafafa;
+  color: #111;
+}
+
+.dark body {
+  background: #0b0d12;
+  color: #e9eaee;
+}
+
+/* Glassmorphism card */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+.dark .glass {
+  background: rgba(20, 22, 30, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Hero gradient background */
+.hero-bg {
+  background:
+    radial-gradient(1200px 600px at 20% 0%, rgba(255, 193, 7, 0.25), transparent 60%),
+    radial-gradient(900px 500px at 90% 20%, rgba(229, 57, 53, 0.25), transparent 60%),
+    linear-gradient(to bottom, #ffffff 0%, #fff7e8 40%, #ffe9e9 100%);
+}
+.dark .hero-bg {
+  background:
+    radial-gradient(1200px 600px at 20% 0%, rgba(255, 193, 7, 0.18), transparent 60%),
+    radial-gradient(900px 500px at 90% 20%, rgba(229, 57, 53, 0.22), transparent 60%),
+    linear-gradient(to bottom, #0b0d12 0%, #15121a 50%, #1a1013 100%);
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition;
+}
+.btn-primary {
+  @apply bg-gradient-to-r from-brand-red to-brand-redDark text-white shadow-soft hover:brightness-110;
+}
+.btn-ghost {
+  @apply bg-white/80 text-neutral-900 border border-neutral-200 hover:bg-white;
+}
+.dark .btn-ghost {
+  @apply bg-white/5 text-neutral-100 border-white/10 hover:bg-white/10;
+}
+
+.card {
+  @apply rounded-2xl bg-white p-6 shadow-soft border border-neutral-100;
+}
+.dark .card {
+  @apply bg-neutral-900 border-white/5;
+}
+
+.chip {
+  @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium;
+}
+
+.section {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+/* Focus rings */
+*:focus-visible { outline: 2px solid #E53935; outline-offset: 2px; border-radius: 6px; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 10px; }
+.dark ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); }
