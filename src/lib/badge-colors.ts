@@ -58,16 +58,16 @@ export function trainingTypeColor(t: string): string {
   return SOFT_PALETTE[hashIndex(t, SOFT_PALETTE.length)];
 }
 
-// A1 → C2: emerald → teal → cyan → blue → violet → fuchsia
-// Each level gets a distinctly different hue and slightly stronger saturation
-// so the visual progression reads "easier → harder" left to right.
+// Neon level palette — warm → cool spectrum that intentionally avoids the
+// cyan/emerald range used by the Verified badge. Each level adds a subtle
+// glow halo for the futuristic feel.
 const LEVEL_PALETTE: Record<string, string> = {
-  A1: "bg-emerald-500/20 text-emerald-700 border-emerald-500/55 dark:bg-emerald-400/15 dark:text-emerald-200 dark:border-emerald-400/45 font-semibold",
-  A2: "bg-teal-500/25 text-teal-700 border-teal-500/60 dark:bg-teal-400/20 dark:text-teal-200 dark:border-teal-400/50 font-semibold",
-  B1: "bg-cyan-500/30 text-cyan-700 border-cyan-500/60 dark:bg-cyan-400/20 dark:text-cyan-200 dark:border-cyan-400/55 font-semibold",
-  B2: "bg-blue-500/30 text-blue-700 border-blue-500/60 dark:bg-blue-400/20 dark:text-blue-200 dark:border-blue-400/55 font-semibold",
-  C1: "bg-violet-500/30 text-violet-700 border-violet-500/65 dark:bg-violet-400/20 dark:text-violet-200 dark:border-violet-400/55 font-semibold",
-  C2: "bg-fuchsia-500/30 text-fuchsia-700 border-fuchsia-500/65 dark:bg-fuchsia-400/20 dark:text-fuchsia-200 dark:border-fuchsia-400/55 font-semibold",
+  A1: "bg-lime-400/15 text-lime-700 border-lime-400 shadow-[0_0_8px_rgba(163,230,53,0.45)] dark:bg-lime-400/10 dark:text-lime-200 dark:border-lime-300 dark:shadow-[0_0_14px_rgba(163,230,53,0.6)] font-bold tracking-wide",
+  A2: "bg-amber-400/15 text-amber-700 border-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.45)] dark:bg-amber-400/10 dark:text-amber-200 dark:border-amber-300 dark:shadow-[0_0_14px_rgba(251,191,36,0.6)] font-bold tracking-wide",
+  B1: "bg-orange-400/15 text-orange-700 border-orange-400 shadow-[0_0_8px_rgba(251,146,60,0.45)] dark:bg-orange-400/10 dark:text-orange-200 dark:border-orange-300 dark:shadow-[0_0_14px_rgba(251,146,60,0.6)] font-bold tracking-wide",
+  B2: "bg-pink-400/15 text-pink-700 border-pink-400 shadow-[0_0_8px_rgba(244,114,182,0.45)] dark:bg-pink-400/10 dark:text-pink-200 dark:border-pink-300 dark:shadow-[0_0_14px_rgba(244,114,182,0.6)] font-bold tracking-wide",
+  C1: "bg-fuchsia-400/15 text-fuchsia-700 border-fuchsia-400 shadow-[0_0_8px_rgba(232,121,249,0.45)] dark:bg-fuchsia-400/10 dark:text-fuchsia-200 dark:border-fuchsia-300 dark:shadow-[0_0_14px_rgba(232,121,249,0.6)] font-bold tracking-wide",
+  C2: "bg-violet-400/15 text-violet-700 border-violet-400 shadow-[0_0_8px_rgba(167,139,250,0.45)] dark:bg-violet-400/10 dark:text-violet-200 dark:border-violet-300 dark:shadow-[0_0_14px_rgba(167,139,250,0.6)] font-bold tracking-wide",
 };
 
 export function levelColor(level: string): string {

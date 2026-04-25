@@ -26,7 +26,7 @@ const badgeVariants = cva(
         featured:
           "bg-gradient-to-br from-amber-400/25 to-orange-500/25 text-amber-700 border border-amber-500/50 font-semibold dark:text-amber-200 dark:border-amber-400/50",
         verified:
-          "bg-emerald-500/15 text-emerald-700 border border-emerald-500/45 font-semibold dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-400/40",
+          "border bg-cyan-400/15 text-cyan-700 border-cyan-400/80 font-bold uppercase tracking-wider shadow-[0_0_8px_rgba(34,211,238,0.45)] dark:bg-cyan-400/10 dark:text-cyan-200 dark:border-cyan-300 dark:shadow-[0_0_14px_rgba(34,211,238,0.6)]",
         sponsored:
           "bg-amber-400/25 text-amber-700 border border-amber-400/55 dark:text-amber-200 dark:border-amber-400/50",
         editorial:
