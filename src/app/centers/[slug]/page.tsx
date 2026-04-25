@@ -26,6 +26,7 @@ import {
   teachers,
 } from "@/lib/mock-data";
 import { formatDate, formatVnd } from "@/lib/utils";
+import { levelColor } from "@/lib/badge-colors";
 
 export function generateStaticParams() {
   return centers.map((c) => ({ slug: c.slug }));
@@ -92,7 +93,7 @@ export default function CenterDetailPage({ params }: { params: { slug: string } 
             </div>
             <div className="flex flex-wrap gap-1.5">
               {center.german_levels.map((l) => (
-                <Badge key={l} variant="level">
+                <Badge key={l} variant="level" className={levelColor(l)}>
                   {l}
                 </Badge>
               ))}

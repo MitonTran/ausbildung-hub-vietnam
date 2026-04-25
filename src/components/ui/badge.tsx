@@ -22,7 +22,7 @@ const badgeVariants = cva(
         tag:
           "bg-primary/10 text-primary border border-primary/40 dark:text-cyan-200 dark:bg-cyan-400/10 dark:border-cyan-400/30",
         level:
-          "bg-gradient-to-br from-cyan-500/25 to-blue-500/25 text-cyan-700 border border-cyan-500/50 font-semibold dark:from-cyan-400/20 dark:to-blue-500/20 dark:text-cyan-200 dark:border-cyan-400/40",
+          "border font-semibold tracking-wide bg-cyan-500/15 text-cyan-700 border-cyan-500/40 dark:text-cyan-200 dark:border-cyan-400/35",
         featured:
           "bg-gradient-to-br from-amber-400/25 to-orange-500/25 text-amber-700 border border-amber-500/50 font-semibold dark:text-amber-200 dark:border-amber-400/50",
         verified:

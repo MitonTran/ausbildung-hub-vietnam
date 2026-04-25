@@ -3,6 +3,7 @@ import { Star, MapPin, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import type { Center } from "@/types";
+import { levelColor } from "@/lib/badge-colors";
 
 export function CenterCard({ center }: { center: Center }) {
   return (
@@ -40,7 +41,7 @@ export function CenterCard({ center }: { center: Center }) {
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {center.german_levels.map((l) => (
-            <Badge key={l} variant="level" className="text-[10px]">
+            <Badge key={l} variant="level" className={`text-[10px] ${levelColor(l)}`}>
               {l}
             </Badge>
           ))}

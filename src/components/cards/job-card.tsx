@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import type { JobOrder } from "@/types";
 import { formatDate } from "@/lib/utils";
+import { levelColor, occupationColor, trainingTypeColor } from "@/lib/badge-colors";
 
 export function JobCard({ job }: { job: JobOrder }) {
   return (
@@ -44,14 +45,14 @@ export function JobCard({ job }: { job: JobOrder }) {
             <Calendar className="h-3.5 w-3.5" />
             {formatDate(job.start_date)}
           </div>
-          <Badge variant="level" className="justify-self-start">
+          <Badge variant="level" className={`justify-self-start ${levelColor(job.german_level_required)}`}>
             {job.german_level_required}
           </Badge>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-1.5 text-[10px]">
-          <Badge variant="tag">{job.training_type}</Badge>
-          <Badge variant="tag">{job.occupation}</Badge>
+          <Badge variant="tag" className={trainingTypeColor(job.training_type)}>{job.training_type}</Badge>
+          <Badge variant="tag" className={occupationColor(job.occupation)}>{job.occupation}</Badge>
           {job.is_featured && <Badge variant="featured">★ Nổi bật</Badge>}
         </div>
       </Card>

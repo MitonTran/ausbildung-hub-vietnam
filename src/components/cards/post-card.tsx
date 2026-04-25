@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { CommunityPost } from "@/types";
 import { relativeTime } from "@/lib/utils";
+import { categoryColor } from "@/lib/badge-colors";
 
 export function PostCard({ post }: { post: CommunityPost }) {
   return (
@@ -16,7 +17,7 @@ export function PostCard({ post }: { post: CommunityPost }) {
               <span className="font-semibold">{post.author_name}</span>
               <span className="text-muted-foreground">·</span>
               <span className="text-xs text-muted-foreground">{relativeTime(post.created_at)}</span>
-              <Badge variant="outline" className="ml-auto text-[10px]">
+              <Badge variant="default" className={`ml-auto text-[10px] ${categoryColor(post.category)}`}>
                 {post.category}
               </Badge>
             </div>
