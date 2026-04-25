@@ -28,25 +28,25 @@
   }
 
   .dark {
-    /* Dark mode — deep navy/black, neon cyan */
-    --background: 222 47% 5%; /* near #07111f */
+    /* Dark mode — deep navy/black, neon cyan (refs: #020617 → #07111f → #0b1220) */
+    --background: 222 47% 4%; /* #020617 */
     --foreground: 210 40% 98%;
-    --card: 222 40% 11%;
+    --card: 222 47% 9%; /* #0b1220 */
     --card-foreground: 210 40% 98%;
-    --popover: 222 40% 11%;
+    --popover: 222 47% 9%;
     --popover-foreground: 210 40% 98%;
     --primary: 189 94% 53%; /* #22d3ee */
     --primary-foreground: 222 47% 5%;
     --secondary: 217 91% 60%; /* #3b82f6 */
     --secondary-foreground: 210 40% 98%;
-    --muted: 222 30% 16%;
-    --muted-foreground: 215 20% 70%;
+    --muted: 222 33% 14%;
+    --muted-foreground: 215 24% 72%;
     --accent: 258 90% 66%; /* #8b5cf6 */
     --accent-foreground: 210 40% 98%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 210 40% 98%;
-    --border: 198 90% 50%;
-    --input: 222 30% 16%;
+    --border: 198 80% 45%;
+    --input: 222 33% 14%;
     --ring: 189 94% 53%;
   }
 }
@@ -95,25 +95,40 @@
   }
 }
 
-/* Aurora / particle background */
-.bg-aurora-light {
+/* Aurora / particle background — single class, dark variant via .dark override */
+.aurora-bg {
   background:
     radial-gradient(60% 50% at 12% 10%, rgba(125, 211, 252, 0.45), transparent 60%),
     radial-gradient(60% 50% at 95% 5%, rgba(167, 139, 250, 0.35), transparent 60%),
     radial-gradient(50% 40% at 50% 95%, rgba(96, 165, 250, 0.3), transparent 60%),
     linear-gradient(180deg, #f8fbff 0%, #eef7ff 60%, #ffffff 100%);
 }
-.dark .bg-aurora-dark {
+.dark .aurora-bg {
   background:
-    radial-gradient(60% 45% at 15% 10%, rgba(34, 211, 238, 0.18), transparent 60%),
-    radial-gradient(50% 35% at 90% 0%, rgba(139, 92, 246, 0.18), transparent 60%),
-    radial-gradient(40% 30% at 50% 100%, rgba(59, 130, 246, 0.18), transparent 60%),
-    linear-gradient(180deg, #020617 0%, #07111f 50%, #0b1220 100%);
+    radial-gradient(55% 45% at 12% 8%, rgba(34, 211, 238, 0.22), transparent 60%),
+    radial-gradient(50% 40% at 92% 0%, rgba(139, 92, 246, 0.22), transparent 60%),
+    radial-gradient(45% 35% at 50% 100%, rgba(59, 130, 246, 0.18), transparent 60%),
+    linear-gradient(180deg, #020617 0%, #060d1a 50%, #0b1220 100%);
 }
 .bg-grid-overlay {
   background-image:
-    linear-gradient(rgba(56, 189, 248, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(56, 189, 248, 0.07) 1px, transparent 1px);
+    linear-gradient(rgba(125, 211, 252, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125, 211, 252, 0.18) 1px, transparent 1px);
   background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse at center, black 50%, transparent 100%);
+  mask-image: radial-gradient(ellipse at center, black 45%, transparent 100%);
+}
+.dark .bg-grid-overlay {
+  background-image:
+    linear-gradient(rgba(56, 189, 248, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.08) 1px, transparent 1px);
+}
+.bg-stars {
+  background-image:
+    radial-gradient(1px 1px at 25% 30%, rgba(255, 255, 255, 0.45) 50%, transparent 100%),
+    radial-gradient(1px 1px at 75% 60%, rgba(255, 255, 255, 0.35) 50%, transparent 100%),
+    radial-gradient(1px 1px at 50% 80%, rgba(255, 255, 255, 0.4) 50%, transparent 100%),
+    radial-gradient(1px 1px at 10% 70%, rgba(255, 255, 255, 0.3) 50%, transparent 100%),
+    radial-gradient(1px 1px at 85% 20%, rgba(255, 255, 255, 0.4) 50%, transparent 100%);
+  background-size: 320px 320px, 280px 280px, 240px 240px, 200px 200px, 360px 360px;
+  background-position: 0 0, 80px 40px, 160px 120px, 40px 200px, 220px 60px;
 }
