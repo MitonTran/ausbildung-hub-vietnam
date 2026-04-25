@@ -56,10 +56,10 @@ export default function HomePage() {
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <PillIcon icon={<GraduationCap className="h-4 w-4" />} label="Đào tạo cây nhà" />
+                <PillIcon icon={<GraduationCap className="h-4 w-4" />} label="Đào tạo bài bản" />
                 <PillIcon icon={<ShieldCheck className="h-4 w-4" />} label="Xác minh đối tác" />
                 <PillIcon icon={<TrendingUp className="h-4 w-4" />} label="Cộng đồng 18K" />
-                <PillIcon icon={<Globe className="h-4 w-4" />} label="Cộng đồng kết nối" />
+                <PillIcon icon={<Globe className="h-4 w-4" />} label="Kết nối toàn cầu" />
               </div>
               <div className="flex items-center gap-2 rounded-2xl border border-border/40 bg-background/50 p-1.5 backdrop-blur w-fit">
                 {["VI", "DE", "EN"].map((l, i) => (
