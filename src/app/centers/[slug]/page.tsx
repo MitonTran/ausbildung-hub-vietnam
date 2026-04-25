@@ -59,7 +59,7 @@ export default function CenterDetailPage({ params }: { params: { slug: string } 
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{center.name}</h1>
               {center.verification_status === "verified" && (
-                <Badge variant="success">
+                <Badge variant="verified">
                   <ShieldCheck className="h-3 w-3" /> Verified
                 </Badge>
               )}
@@ -92,7 +92,7 @@ export default function CenterDetailPage({ params }: { params: { slug: string } 
             </div>
             <div className="flex flex-wrap gap-1.5">
               {center.german_levels.map((l) => (
-                <Badge key={l} variant="outline">
+                <Badge key={l} variant="level">
                   {l}
                 </Badge>
               ))}

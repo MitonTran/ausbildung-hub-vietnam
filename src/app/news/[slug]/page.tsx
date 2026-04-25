@@ -83,7 +83,7 @@ export default function ArticleDetailPage({ params }: { params: { slug: string }
 
         <div className="flex flex-wrap gap-2">
           {article.tags.map((t) => (
-            <Badge key={t} variant="outline">
+            <Badge key={t} variant="tag">
               #{t}
             </Badge>
           ))}

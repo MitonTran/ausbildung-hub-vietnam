@@ -14,18 +14,18 @@ export function JobCard({ job }: { job: JobOrder }) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={job.company_logo} alt={job.company_name} className="h-full w-full object-contain p-1.5" />
           </div>
-          <div className="flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="text-sm font-semibold leading-snug group-hover:text-primary transition-colors">
-                {job.title}
-              </h3>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-semibold leading-snug group-hover:text-primary transition-colors">
+              {job.title}
+            </h3>
+            <div className="mt-1 flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-muted-foreground">{job.company_name}</span>
               {job.verification_status === "verified" && (
-                <Badge variant="success" className="shrink-0">
-                  <ShieldCheck className="h-3 w-3" />
+                <Badge variant="verified" className="shrink-0">
+                  <ShieldCheck className="h-3 w-3" /> Verified
                 </Badge>
               )}
             </div>
-            <div className="mt-0.5 text-xs text-muted-foreground">{job.company_name}</div>
           </div>
         </div>
 
@@ -44,15 +44,15 @@ export function JobCard({ job }: { job: JobOrder }) {
             <Calendar className="h-3.5 w-3.5" />
             {formatDate(job.start_date)}
           </div>
-          <Badge variant="default" className="justify-self-start">
+          <Badge variant="level" className="justify-self-start">
             {job.german_level_required}
           </Badge>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-1.5 text-[10px]">
-          <Badge variant="outline">{job.training_type}</Badge>
-          <Badge variant="outline">{job.occupation}</Badge>
-          {job.is_featured && <Badge variant="accent">Nổi bật</Badge>}
+          <Badge variant="tag">{job.training_type}</Badge>
+          <Badge variant="tag">{job.occupation}</Badge>
+          {job.is_featured && <Badge variant="featured">★ Nổi bật</Badge>}
         </div>
       </Card>
     </Link>

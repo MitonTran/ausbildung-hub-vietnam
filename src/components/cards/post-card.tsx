@@ -25,7 +25,7 @@ export function PostCard({ post }: { post: CommunityPost }) {
             {post.tags && post.tags.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {post.tags.map((t) => (
-                  <Badge key={t} variant="secondary" className="text-[10px]">
+                  <Badge key={t} variant="tag" className="text-[10px]">
                     #{t}
                   </Badge>
                 ))}

@@ -14,18 +14,18 @@ export function CenterCard({ center }: { center: Center }) {
             <img src={center.logo_url} alt={center.name} className="h-full w-full object-contain p-2" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="text-sm font-semibold leading-snug group-hover:text-primary transition-colors">
-                {center.name}
-              </h3>
+            <h3 className="text-sm font-semibold leading-snug group-hover:text-primary transition-colors">
+              {center.name}
+            </h3>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <MapPin className="h-3 w-3" /> {center.city}
+              </span>
               {center.verification_status === "verified" && (
-                <Badge variant="success" className="shrink-0">
+                <Badge variant="verified">
                   <ShieldCheck className="h-3 w-3" /> Verified
                 </Badge>
               )}
-            </div>
-            <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-              <MapPin className="h-3 w-3" /> {center.city}
             </div>
             <div className="mt-1.5 flex items-center gap-2">
               <div className="flex items-center gap-0.5 text-xs">
@@ -40,7 +40,7 @@ export function CenterCard({ center }: { center: Center }) {
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {center.german_levels.map((l) => (
-            <Badge key={l} variant="outline" className="text-[10px]">
+            <Badge key={l} variant="level" className="text-[10px]">
               {l}
             </Badge>
           ))}
