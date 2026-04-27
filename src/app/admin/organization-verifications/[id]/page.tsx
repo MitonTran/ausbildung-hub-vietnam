@@ -65,7 +65,7 @@ export default async function AdminOrgVerificationDetailPage({
   const { data, error } = await supabase
     .from("organization_verifications")
     .select(
-      `id, organization_id, requested_status, submitted_by, document_file_paths, document_summary, fee_disclosure, status, reviewed_by, reviewed_at, expires_at, rejection_reason, admin_note, created_at, updated_at,
+      `id, organization_id, requested_status, granted_status, submitted_by, document_file_paths, document_summary, fee_disclosure, status, reviewed_by, reviewed_at, expires_at, rejection_reason, admin_note, created_at, updated_at,
        organization:organizations!organization_verifications_organization_id_fkey(
          id, org_type, legal_name, brand_name, slug, country, city, address,
          website_url, contact_email, contact_phone, description, services,

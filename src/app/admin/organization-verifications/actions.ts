@@ -29,7 +29,7 @@ async function loadVerification(
   const { data } = await admin
     .from("organization_verifications")
     .select(
-      "id, organization_id, requested_status, submitted_by, document_file_paths, document_summary, fee_disclosure, status, reviewed_by, reviewed_at, expires_at, rejection_reason, admin_note, created_at, updated_at"
+      "id, organization_id, requested_status, granted_status, submitted_by, document_file_paths, document_summary, fee_disclosure, status, reviewed_by, reviewed_at, expires_at, rejection_reason, admin_note, created_at, updated_at"
     )
     .eq("id", id)
     .maybeSingle();
@@ -108,6 +108,10 @@ export async function approveOrganizationVerificationAction(
     .from("organization_verifications")
     .update({
       status: "approved",
+      // Persist the tier the admin actually granted, which can differ from
+      // the org's requested_status. Reading this back lets expire/revoke
+      // identify the correct badge to clear.
+      granted_status: grant,
       reviewed_by: admin.id,
       reviewed_at: reviewedAt.toISOString(),
       expires_at: expiresAt,
@@ -145,6 +149,7 @@ export async function approveOrganizationVerificationAction(
       .from("organization_verifications")
       .update({
         status: verification.status,
+        granted_status: verification.granted_status,
         reviewed_by: verification.reviewed_by,
         reviewed_at: verification.reviewed_at,
         expires_at: verification.expires_at,
@@ -473,7 +478,12 @@ export async function expireOrganizationVerificationAction(formData: FormData) {
   // 2. If the org's CURRENT verification_status matches the level
   //    granted by THIS request, clear it. Don't touch the badge if
   //    the org has been re-verified at a different level since.
-  const grantedLevel = verification.requested_status as OrgVerificationStatus;
+  //
+  //    Source of truth is verification.granted_status (the tier the admin
+  //    actually approved). Fall back to requested_status for legacy rows
+  //    written before migration 0006 added the granted_status column.
+  const grantedLevel = (verification.granted_status ??
+    verification.requested_status) as OrgVerificationStatus;
   const orgIsAtSameLevel = org.verification_status === grantedLevel;
   if (orgIsAtSameLevel) {
     const { data: clearedRows, error: clearErr } = await supabase

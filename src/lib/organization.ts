@@ -240,6 +240,13 @@ export type OrganizationVerificationRow = {
   id: string;
   organization_id: string;
   requested_status: OrgVerificationRequestable;
+  /**
+   * The badge tier the admin actually granted. NULL until approved (and on
+   * legacy rows from before migration 0006). This is the source of truth
+   * for "which tier did this verification grant", because admins are allowed
+   * to grant something different than the org requested.
+   */
+  granted_status: OrgVerificationRequestable | null;
   submitted_by: string;
   document_file_paths: string[] | null;
   document_summary: string | null;

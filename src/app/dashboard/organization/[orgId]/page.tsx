@@ -89,7 +89,7 @@ export default async function OrganizationDashboardDetailPage({
   const { data: verificationsRaw } = await admin
     .from("organization_verifications")
     .select(
-      "id, organization_id, requested_status, submitted_by, document_file_paths, document_summary, fee_disclosure, status, reviewed_by, reviewed_at, expires_at, rejection_reason, admin_note, created_at, updated_at"
+      "id, organization_id, requested_status, granted_status, submitted_by, document_file_paths, document_summary, fee_disclosure, status, reviewed_by, reviewed_at, expires_at, rejection_reason, admin_note, created_at, updated_at"
     )
     .eq("organization_id", org.id)
     .order("created_at", { ascending: false });
