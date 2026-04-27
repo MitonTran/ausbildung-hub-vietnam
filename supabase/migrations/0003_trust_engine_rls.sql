@@ -1150,6 +1150,90 @@ create policy "Moderators and admins can manage reports"
   using (public.is_moderator_or_admin(auth.uid()))
   with check (public.is_moderator_or_admin(auth.uid()));
 
+-- Privilege-escalation trigger on report_flags.
+--
+-- The "Authenticated users can create reports" INSERT policy WITH
+-- CHECK only validates that the caller is the reporter. It does not
+-- constrain `status`, `severity`, `handled_by`, `handled_at`,
+-- `outcome`, or `internal_note`. Without this trigger, a user could
+-- ship a row that closes itself, sets a triage outcome, or attaches
+-- moderator-only `internal_note` content via:
+--
+--   insert into report_flags
+--     (reporter_id, target_type, target_id, reason,
+--      status, handled_by, handled_at, outcome, internal_note,
+--      severity)
+--   values
+--     ('<self>', 'review', '<some-review-id>', 'spam',
+--      'resolved', '<self>', now(), 'no action', 'self-closed',
+--      'low');
+--
+-- bypassing the moderation queue or poisoning the queue with
+-- attacker-chosen severity. The trigger clamps these columns on
+-- INSERT for non-mods and reverts them on UPDATE.
+--
+-- There is no UPDATE policy for non-mods on this table, so the
+-- UPDATE branch is defensive but harmless.
+create or replace function public.report_flags_prevent_privilege_escalation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  acting_uid uuid;
+begin
+  acting_uid := auth.uid();
+
+  if acting_uid is null then
+    return new;
+  end if;
+
+  if public.is_moderator_or_admin(acting_uid) then
+    return new;
+  end if;
+
+  if TG_OP = 'INSERT' then
+    new.status        := 'open';
+    new.severity      := 'medium';
+    new.handled_by    := null;
+    new.handled_at    := null;
+    new.outcome       := null;
+    new.internal_note := null;
+    return new;
+  end if;
+
+  if new.reporter_id is distinct from old.reporter_id then
+    new.reporter_id := old.reporter_id;
+  end if;
+  if new.status is distinct from old.status then
+    new.status := old.status;
+  end if;
+  if new.severity is distinct from old.severity then
+    new.severity := old.severity;
+  end if;
+  if new.handled_by is distinct from old.handled_by then
+    new.handled_by := old.handled_by;
+  end if;
+  if new.handled_at is distinct from old.handled_at then
+    new.handled_at := old.handled_at;
+  end if;
+  if new.outcome is distinct from old.outcome then
+    new.outcome := old.outcome;
+  end if;
+  if new.internal_note is distinct from old.internal_note then
+    new.internal_note := old.internal_note;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists report_flags_prevent_privilege_escalation on public.report_flags;
+create trigger report_flags_prevent_privilege_escalation
+  before insert or update on public.report_flags
+  for each row execute function public.report_flags_prevent_privilege_escalation();
+
 
 -- ===================================================================
 -- 11. dispute_cases policies
@@ -1181,6 +1265,83 @@ create policy "Moderators and admins can manage disputes"
   to authenticated
   using (public.is_moderator_or_admin(auth.uid()))
   with check (public.is_moderator_or_admin(auth.uid()));
+
+-- Privilege-escalation trigger on dispute_cases.
+--
+-- The "Users can create own disputes" INSERT policy WITH CHECK only
+-- validates that opened_by = auth.uid(). It does not constrain
+-- `status`, `assigned_to`, `resolution`, `resolved_by`, or
+-- `resolved_at`. Without this trigger, a user could:
+--
+--   * mark their own dispute resolved on creation:
+--       insert into dispute_cases
+--         (opened_by, target_type, target_id, dispute_type, summary,
+--          status, resolution, resolved_by, resolved_at, assigned_to)
+--       values
+--         ('<self>', 'organization', '<some-org-id>', 'fee_dispute',
+--          'x', 'resolved', 'fully refunded', '<self>', now(),
+--          '<self>');
+--   * spam-assign a dispute to a specific moderator on creation
+--     (poisoning the moderator's queue or routing logic).
+--
+-- The trigger clamps these columns on INSERT for non-mods and
+-- reverts them on UPDATE. There is no UPDATE policy for non-mods on
+-- this table, so the UPDATE branch is defensive.
+create or replace function public.dispute_cases_prevent_privilege_escalation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  acting_uid uuid;
+begin
+  acting_uid := auth.uid();
+
+  if acting_uid is null then
+    return new;
+  end if;
+
+  if public.is_moderator_or_admin(acting_uid) then
+    return new;
+  end if;
+
+  if TG_OP = 'INSERT' then
+    new.status      := 'open';
+    new.assigned_to := null;
+    new.resolution  := null;
+    new.resolved_by := null;
+    new.resolved_at := null;
+    return new;
+  end if;
+
+  if new.opened_by is distinct from old.opened_by then
+    new.opened_by := old.opened_by;
+  end if;
+  if new.status is distinct from old.status then
+    new.status := old.status;
+  end if;
+  if new.assigned_to is distinct from old.assigned_to then
+    new.assigned_to := old.assigned_to;
+  end if;
+  if new.resolution is distinct from old.resolution then
+    new.resolution := old.resolution;
+  end if;
+  if new.resolved_by is distinct from old.resolved_by then
+    new.resolved_by := old.resolved_by;
+  end if;
+  if new.resolved_at is distinct from old.resolved_at then
+    new.resolved_at := old.resolved_at;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists dispute_cases_prevent_privilege_escalation on public.dispute_cases;
+create trigger dispute_cases_prevent_privilege_escalation
+  before insert or update on public.dispute_cases
+  for each row execute function public.dispute_cases_prevent_privilege_escalation();
 
 
 -- ===================================================================
