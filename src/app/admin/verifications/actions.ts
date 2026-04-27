@@ -365,10 +365,21 @@ export async function expireOrRevokeVerificationAction(formData: FormData) {
       })
       .eq("id", verification.user_id);
     if (clearProfileError) {
-      // Don't write a verified_stage_changed audit log we can't
-      // back up with a real DB change. The verification row itself
-      // is already in the new state and that audit is written below.
+      // The verification row has already been flipped to expired /
+      // revoked above. Roll it back to 'approved' so we don't end up
+      // with a row claiming the badge was lifted while the profile
+      // still shows it. Mirrors the rollback in approveVerificationAction.
+      await supabase
+        .from("user_verifications")
+        .update({
+          status: verification.status,
+          reviewed_by: verification.reviewed_by,
+          reviewed_at: verification.reviewed_at,
+          admin_note: verification.admin_note,
+        })
+        .eq("id", id);
       console.error("[expireOrRevoke:clearProfile]", clearProfileError);
+      return;
     } else {
       await writeAuditLog({
         actorId: admin.id,
