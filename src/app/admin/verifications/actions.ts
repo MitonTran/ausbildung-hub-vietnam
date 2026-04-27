@@ -98,7 +98,23 @@ export async function approveVerificationAction(formData: FormData) {
     })
     .eq("id", verification.user_id);
   if (updateProfileError) {
+    // The user_verifications row was already flipped to 'approved'
+    // above. Roll it back so we don't end up with an approved row
+    // pointing at a profile that never received the badge — and so
+    // we don't write a misleading verified_stage_changed audit log.
+    await supabase
+      .from("user_verifications")
+      .update({
+        status: verification.status,
+        reviewed_by: verification.reviewed_by,
+        reviewed_at: verification.reviewed_at,
+        expires_at: verification.expires_at,
+        rejection_reason: verification.rejection_reason,
+        admin_note: verification.admin_note,
+      })
+      .eq("id", id);
     console.error("[approveVerification:profile]", updateProfileError);
+    return;
   }
 
   await writeAuditLog({
@@ -250,7 +266,12 @@ export async function expireOrRevokeVerificationAction(formData: FormData) {
 
   const verification = await loadVerification(id);
   if (!verification) return;
-  if (verification.status === "expired" || verification.status === "revoked") {
+  // Only an `approved` verification can be expired or revoked. Any
+  // other status (pending / rejected / need_more_info / already
+  // expired / already revoked) is rejected here so a crafted form
+  // submission cannot strip a user's badge by targeting an unrelated
+  // pending request.
+  if (verification.status !== "approved") {
     return;
   }
 
@@ -285,28 +306,34 @@ export async function expireOrRevokeVerificationAction(formData: FormData) {
     targetBefore?.verified_stage &&
     targetBefore.verified_stage === verification.requested_stage
   ) {
-    await supabase
+    const { error: clearProfileError } = await supabase
       .from("profiles")
       .update({
         verified_stage: null,
         verification_status: "unverified",
       })
       .eq("id", verification.user_id);
-
-    await writeAuditLog({
-      actorId: admin.id,
-      actorType: actorTypeForRole(admin.role),
-      action: "verified_stage_changed",
-      targetType: "profile",
-      targetId: verification.user_id,
-      changedFields: ["verified_stage", "verification_status"],
-      beforeData: targetBefore,
-      afterData: {
-        verified_stage: null,
-        verification_status: "unverified",
-      },
-      reason: `auto-cleared because verification ${id} was ${newStatus}`,
-    });
+    if (clearProfileError) {
+      // Don't write a verified_stage_changed audit log we can't
+      // back up with a real DB change. The verification row itself
+      // is already in the new state and that audit is written below.
+      console.error("[expireOrRevoke:clearProfile]", clearProfileError);
+    } else {
+      await writeAuditLog({
+        actorId: admin.id,
+        actorType: actorTypeForRole(admin.role),
+        action: "verified_stage_changed",
+        targetType: "profile",
+        targetId: verification.user_id,
+        changedFields: ["verified_stage", "verification_status"],
+        beforeData: targetBefore,
+        afterData: {
+          verified_stage: null,
+          verification_status: "unverified",
+        },
+        reason: `auto-cleared because verification ${id} was ${newStatus}`,
+      });
+    }
   }
 
   await writeAuditLog({
