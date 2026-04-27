@@ -460,6 +460,77 @@ create policy "Admins can manage user verification requests"
   using (public.is_admin(auth.uid()))
   with check (public.is_admin(auth.uid()));
 
+-- Privilege-escalation trigger on user_verifications.
+--
+-- The "Users can update pending own verification requests" policy
+-- intentionally allows owners to edit their own pending requests
+-- (they may need to add evidence files, fix typos, etc.). However
+-- without a trigger, an owner could also self-approve their request
+-- via `update user_verifications set status = 'approved' where id =
+-- <own_id>`: USING is satisfied (old.status = 'pending') and
+-- WITH CHECK is satisfied (user_id = auth.uid()). Splitting the
+-- policy into per-column WITH CHECK clauses is not expressible in
+-- standard Postgres RLS, so we mirror the
+-- `profiles_prevent_privilege_escalation` pattern from 0001 and
+-- silently revert any non-admin attempt to mutate the moderation
+-- columns. Admins (and the service role, which bypasses RLS but
+-- still hits this trigger) can change anything.
+create or replace function public.user_verifications_prevent_privilege_escalation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  acting_uid uuid;
+begin
+  acting_uid := auth.uid();
+
+  -- No session (server-side function / service role with no JWT):
+  -- allow the write through.
+  if acting_uid is null then
+    return new;
+  end if;
+
+  -- Admins / super_admins can change any column.
+  if public.is_admin(acting_uid) then
+    return new;
+  end if;
+
+  -- Otherwise: revert moderation columns. user_id is also pinned so
+  -- a malicious owner cannot reassign their own request to another
+  -- user.
+  if new.user_id is distinct from old.user_id then
+    new.user_id := old.user_id;
+  end if;
+  if new.status is distinct from old.status then
+    new.status := old.status;
+  end if;
+  if new.reviewed_by is distinct from old.reviewed_by then
+    new.reviewed_by := old.reviewed_by;
+  end if;
+  if new.reviewed_at is distinct from old.reviewed_at then
+    new.reviewed_at := old.reviewed_at;
+  end if;
+  if new.expires_at is distinct from old.expires_at then
+    new.expires_at := old.expires_at;
+  end if;
+  if new.rejection_reason is distinct from old.rejection_reason then
+    new.rejection_reason := old.rejection_reason;
+  end if;
+  if new.admin_note is distinct from old.admin_note then
+    new.admin_note := old.admin_note;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists user_verifications_prevent_privilege_escalation on public.user_verifications;
+create trigger user_verifications_prevent_privilege_escalation
+  before update on public.user_verifications
+  for each row execute function public.user_verifications_prevent_privilege_escalation();
+
 
 -- ===================================================================
 -- 6. organization_verifications policies
@@ -604,6 +675,64 @@ create policy "Moderators and admins can manage reviews"
   using (public.is_moderator_or_admin(auth.uid()))
   with check (public.is_moderator_or_admin(auth.uid()));
 
+-- Privilege-escalation trigger on reviews.
+--
+-- Without this trigger, the "Users can update pending own reviews"
+-- policy lets an owner publish their own review:
+--   update reviews set moderation_status = 'published' where id = <own_id>;
+-- USING passes (old.moderation_status = 'pending'), WITH CHECK
+-- passes (reviewer_id = auth.uid()). The trigger reverts
+-- moderation columns and the reviewer_id pin so non-mods cannot
+-- self-publish, set publishing metadata, file rejection reasons, or
+-- reassign authorship.
+create or replace function public.reviews_prevent_privilege_escalation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  acting_uid uuid;
+begin
+  acting_uid := auth.uid();
+
+  if acting_uid is null then
+    return new;
+  end if;
+
+  -- Moderators, admins, and super_admins can change any column.
+  if public.is_moderator_or_admin(acting_uid) then
+    return new;
+  end if;
+
+  if new.reviewer_id is distinct from old.reviewer_id then
+    new.reviewer_id := old.reviewer_id;
+  end if;
+  if new.moderation_status is distinct from old.moderation_status then
+    new.moderation_status := old.moderation_status;
+  end if;
+  if new.published_at is distinct from old.published_at then
+    new.published_at := old.published_at;
+  end if;
+  if new.rejected_reason is distinct from old.rejected_reason then
+    new.rejected_reason := old.rejected_reason;
+  end if;
+  if new.dispute_status is distinct from old.dispute_status then
+    new.dispute_status := old.dispute_status;
+  end if;
+  if new.deleted_at is distinct from old.deleted_at then
+    new.deleted_at := old.deleted_at;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists reviews_prevent_privilege_escalation on public.reviews;
+create trigger reviews_prevent_privilege_escalation
+  before update on public.reviews
+  for each row execute function public.reviews_prevent_privilege_escalation();
+
 
 -- ===================================================================
 -- 9. review_proofs policies
@@ -687,6 +816,64 @@ create policy "Moderators and admins can manage review proofs"
   to authenticated
   using (public.is_moderator_or_admin(auth.uid()))
   with check (public.is_moderator_or_admin(auth.uid()));
+
+-- Privilege-escalation trigger on review_proofs.
+--
+-- The "Users can update own review proofs while pending" policy
+-- allows a reviewer to edit their own proof rows, which is needed so
+-- they can swap a wrong file or correct mime/path metadata. Without
+-- this trigger, the same policy would also let them self-approve
+-- their own evidence:
+--   update review_proofs set status = 'approved' where id = <own_id>;
+-- The trigger reverts the moderation columns (status, reviewed_by,
+-- reviewed_at, rejection_reason) and the uploaded_by / review_id
+-- pins for non-moderators.
+create or replace function public.review_proofs_prevent_privilege_escalation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  acting_uid uuid;
+begin
+  acting_uid := auth.uid();
+
+  if acting_uid is null then
+    return new;
+  end if;
+
+  if public.is_moderator_or_admin(acting_uid) then
+    return new;
+  end if;
+
+  if new.review_id is distinct from old.review_id then
+    new.review_id := old.review_id;
+  end if;
+  if new.uploaded_by is distinct from old.uploaded_by then
+    new.uploaded_by := old.uploaded_by;
+  end if;
+  if new.status is distinct from old.status then
+    new.status := old.status;
+  end if;
+  if new.reviewed_by is distinct from old.reviewed_by then
+    new.reviewed_by := old.reviewed_by;
+  end if;
+  if new.reviewed_at is distinct from old.reviewed_at then
+    new.reviewed_at := old.reviewed_at;
+  end if;
+  if new.rejection_reason is distinct from old.rejection_reason then
+    new.rejection_reason := old.rejection_reason;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists review_proofs_prevent_privilege_escalation on public.review_proofs;
+create trigger review_proofs_prevent_privilege_escalation
+  before update on public.review_proofs
+  for each row execute function public.review_proofs_prevent_privilege_escalation();
 
 
 -- ===================================================================
