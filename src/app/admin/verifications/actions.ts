@@ -357,13 +357,19 @@ export async function expireOrRevokeVerificationAction(formData: FormData) {
     targetBefore?.verified_stage &&
     targetBefore.verified_stage === verification.requested_stage
   ) {
-    const { error: clearProfileError } = await supabase
+    // Optimistic concurrency on the profile too: only clear the badge
+    // if it still matches the stage we read above. If a concurrent
+    // approveVerificationAction granted the user a different
+    // verified_stage in between, we leave the new badge alone.
+    const { data: clearedProfileRows, error: clearProfileError } = await supabase
       .from("profiles")
       .update({
         verified_stage: null,
         verification_status: "unverified",
       })
-      .eq("id", verification.user_id);
+      .eq("id", verification.user_id)
+      .eq("verified_stage", verification.requested_stage)
+      .select("id");
     if (clearProfileError) {
       // The verification row has already been flipped to expired /
       // revoked above. Roll it back to 'approved' so we don't end up
@@ -380,7 +386,11 @@ export async function expireOrRevokeVerificationAction(formData: FormData) {
         .eq("id", id);
       console.error("[expireOrRevoke:clearProfile]", clearProfileError);
       return;
-    } else {
+    } else if (clearedProfileRows && clearedProfileRows.length > 0) {
+      // Only audit the profile change if the UPDATE actually changed
+      // a row. If clearedProfileRows is empty, the user's
+      // verified_stage was reassigned by a concurrent approval and we
+      // intentionally left it alone.
       await writeAuditLog({
         actorId: admin.id,
         actorType: actorTypeForRole(admin.role),
