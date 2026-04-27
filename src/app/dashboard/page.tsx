@@ -141,6 +141,27 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Building2 className="h-4 w-4" />
+              Tổ chức của bạn
+            </CardTitle>
+            <CardDescription>
+              Cập nhật hồ sơ trung tâm / doanh nghiệp và gửi yêu cầu xác minh
+              tổ chức.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="outline">
+              <Link href="/dashboard/organization">
+                Mở trang quản lý tổ chức
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle className="text-lg">Tài khoản</CardTitle>
