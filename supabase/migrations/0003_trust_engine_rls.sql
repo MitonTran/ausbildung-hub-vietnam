@@ -283,12 +283,20 @@ create policy "Members can read own organizations"
   to authenticated
   using (public.is_org_member(id));
 
--- Active members may update their own organization. Sensitive trust
--- columns (verification_status, trust_badge, risk_score, is_suspended,
--- last_verified_at, verification_expires_at) are reverted by the
--- BEFORE UPDATE trigger `organizations_prevent_privilege_escalation`
--- defined below — see /docs/rls-policy.md §4 "members must not update
--- verification status, trust badge, risk score, or suspension fields".
+-- Active members may update their own organization. The following
+-- columns are reverted for non-admins by the BEFORE UPDATE trigger
+-- `organizations_prevent_privilege_escalation` defined below:
+--   verification_status, trust_badge, risk_score      (trust state)
+--   is_suspended                                      (admin-only)
+--   is_published                                      (admin-only:
+--     /docs/trust-engine.md requires orgs to clear verification
+--     before going live, so members cannot self-publish a draft)
+--   last_verified_at, verification_expires_at         (trust state)
+--   deleted_at                                        (soft-delete
+--     is an admin operation; members must not bypass the moderation
+--     queue by tombstoning their own org)
+-- See /docs/rls-policy.md §4 "members must not update verification
+-- status, trust badge, risk score, or suspension fields".
 drop policy if exists "Members can update own organizations" on public.organizations;
 create policy "Members can update own organizations"
   on public.organizations for update
