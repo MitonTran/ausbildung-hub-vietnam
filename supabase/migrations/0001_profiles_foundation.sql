@@ -128,8 +128,13 @@ begin
   meta_role := nullif(new.raw_user_meta_data ->> 'role', '');
   meta_full_name := nullif(new.raw_user_meta_data ->> 'full_name', '');
 
+  -- Only the three self-service roles are accepted from signup metadata.
+  -- Privileged roles (moderator, admin, super_admin) must be granted by an
+  -- existing admin via the service role / admin client; an attacker cannot
+  -- bypass signUpAction and call auth.signUp directly to grant themselves
+  -- a privileged role through raw_user_meta_data.
   if meta_role is null or meta_role not in (
-    'student','center_admin','employer_admin','moderator','admin','super_admin'
+    'student','center_admin','employer_admin'
   ) then
     meta_role := 'student';
   end if;
@@ -190,14 +195,70 @@ create policy "Users can read own profile"
   to authenticated
   using (id = auth.uid());
 
--- Note: column-level enforcement (e.g. blocking role self-promotion)
--- is handled by server actions and a future trigger. The RLS layer
--- below simply allows users to update their own row.
+-- The RLS policy below allows users to update their own row, but the
+-- BEFORE UPDATE trigger `profiles_prevent_privilege_escalation` (defined
+-- below) reverts attempts to change `role`, `verified_stage`,
+-- `verification_status`, `trust_score`, or `risk_score` from a
+-- non-admin session. This protects against a user calling
+-- supabase.from('profiles').update({ role: 'super_admin' }) directly via
+-- the public anon key.
 create policy "Users can update own profile"
   on public.profiles for update
   to authenticated
   using (id = auth.uid())
   with check (id = auth.uid());
+
+create or replace function public.profiles_prevent_privilege_escalation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  acting_uid uuid;
+begin
+  acting_uid := auth.uid();
+
+  -- Service-role / no-session contexts (e.g. handle_new_user trigger,
+  -- admin client) bypass this guard. RLS already prevents anonymous
+  -- callers from reaching this trigger via a normal session.
+  if acting_uid is null then
+    return new;
+  end if;
+
+  -- Admins / super admins can change any field.
+  if public.is_admin(acting_uid) then
+    return new;
+  end if;
+
+  -- Otherwise: revert any attempt to mutate trust/role/verification
+  -- columns. We silently restore the old value rather than raising so
+  -- that legitimate full-row UPDATEs from clients still succeed for the
+  -- safe columns.
+  if new.role is distinct from old.role then
+    new.role := old.role;
+  end if;
+  if new.verified_stage is distinct from old.verified_stage then
+    new.verified_stage := old.verified_stage;
+  end if;
+  if new.verification_status is distinct from old.verification_status then
+    new.verification_status := old.verification_status;
+  end if;
+  if new.trust_score is distinct from old.trust_score then
+    new.trust_score := old.trust_score;
+  end if;
+  if new.risk_score is distinct from old.risk_score then
+    new.risk_score := old.risk_score;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists profiles_prevent_privilege_escalation on public.profiles;
+create trigger profiles_prevent_privilege_escalation
+  before update on public.profiles
+  for each row execute function public.profiles_prevent_privilege_escalation();
 
 -- Insert is normally done via the handle_new_user trigger, but we
 -- allow self-insert as a fallback for clients that create profiles
