@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
-  ShieldCheck,
   Star,
   MapPin,
   Phone,
@@ -18,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { CenterCard } from "@/components/cards/center-card";
+import { OrganizationVerificationBadge } from "@/components/organization-verification-badge";
 import {
   centers,
   findCenter,
@@ -27,12 +27,33 @@ import {
 } from "@/lib/mock-data";
 import { formatDate, formatVnd } from "@/lib/utils";
 import { levelColor } from "@/lib/badge-colors";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+import type { OrganizationRow } from "@/lib/organization";
 
 export function generateStaticParams() {
   return centers.map((c) => ({ slug: c.slug }));
 }
 
-export default function CenterDetailPage({ params }: { params: { slug: string } }) {
+async function loadOrgBySlug(slug: string): Promise<OrganizationRow | null> {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = createSupabaseAdminClient();
+  const { data } = await supabase
+    .from("organizations")
+    .select(
+      "id, org_type, legal_name, brand_name, slug, country, city, address, website_url, contact_email, contact_phone, description, services, verification_status, trust_badge, last_verified_at, verification_expires_at, last_updated_by_org_at, risk_score, is_published, is_suspended, created_at, updated_at"
+    )
+    .eq("slug", slug)
+    .eq("org_type", "training_center")
+    .maybeSingle();
+  return (data as OrganizationRow | null) ?? null;
+}
+
+export default async function CenterDetailPage({
+  params,
+}: {
+  params: { slug: string };
+}) {
   const center = findCenter(params.slug);
   if (!center) notFound();
 
@@ -40,6 +61,12 @@ export default function CenterDetailPage({ params }: { params: { slug: string } 
   const intakes = classIntakes.filter((i) => i.center_id === center.id);
   const ts = teachers.filter((t) => t.center_id === center.id);
   const similar = centers.filter((c) => c.id !== center.id && c.city === center.city).slice(0, 3);
+
+  // Look up the real organization (if any) so we can render the
+  // verification badge + sponsored chip strictly from DB state. Mock
+  // listing content is kept for the rest of the page so existing demo
+  // data continues to render in environments without DB rows yet.
+  const dbOrg = await loadOrgBySlug(params.slug);
 
   return (
     <div className="container py-8 space-y-6">
@@ -59,12 +86,38 @@ export default function CenterDetailPage({ params }: { params: { slug: string } 
           <div className="flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{center.name}</h1>
-              {center.verification_status === "verified" && (
-                <Badge variant="verified">
-                  <ShieldCheck className="h-3 w-3" /> Verified
-                </Badge>
-              )}
+              {/*
+                Verification badge: prefer the DB-backed
+                organizations.verification_status so the public profile
+                always reflects current admin moderation state.
+                Falls back to the mock "verified" chip for orgs that
+                aren't mirrored in the DB yet.
+              */}
+              {dbOrg ? (
+                <OrganizationVerificationBadge org={dbOrg} />
+              ) : center.verification_status === "verified" ? (
+                <Badge variant="verified">Đã xác minh</Badge>
+              ) : null}
+              {/*
+                If this listing is a paid placement, render a clearly
+                distinct "Tài trợ" chip — separated from the
+                verification badge per /docs/trust-engine.md §3.4.
+                The mock Center type carries no sponsorship signal, so
+                the chip is currently only emitted on /companies/[slug]
+                where Company.is_featured exists.
+              */}
             </div>
+            {dbOrg?.last_verified_at ? (
+              <p className="text-xs text-muted-foreground">
+                Lần xác minh gần nhất:{" "}
+                {new Date(dbOrg.last_verified_at).toLocaleDateString("vi-VN")}
+                {dbOrg.verification_expires_at
+                  ? ` · hết hạn ${new Date(
+                      dbOrg.verification_expires_at
+                    ).toLocaleDateString("vi-VN")}`
+                  : ""}
+              </p>
+            ) : null}
             <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
               <span className="flex items-center gap-1">
                 <MapPin className="h-3.5 w-3.5" /> {center.city}
