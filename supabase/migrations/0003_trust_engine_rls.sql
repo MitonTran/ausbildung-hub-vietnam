@@ -600,9 +600,15 @@ create policy "Anyone can read published job orders"
     and deleted_at is null
   );
 
--- Active members of the publishing organization can do anything on
--- their own job orders. Triggers / server code are responsible for
--- preventing them from setting verification_status = approved.
+-- Active members of the publishing organization can manage their own
+-- job orders (CRUD job content). The
+-- `job_orders_prevent_privilege_escalation` trigger below prevents
+-- non-admins from self-promoting their own job into the public
+-- listing or self-granting the trust badge — see
+-- /docs/rls-policy.md §8 ("members must not directly set
+-- verification_status = approved unless through admin workflow") and
+-- /docs/trust-engine.md §"Organization admins must not self-approve
+-- verification or badges".
 drop policy if exists "Org members can manage own job orders" on public.job_orders;
 create policy "Org members can manage own job orders"
   on public.job_orders for all
@@ -625,6 +631,86 @@ create policy "Moderators can read all job orders"
   on public.job_orders for select
   to authenticated
   using (public.is_moderator_or_admin(auth.uid()));
+
+-- Privilege-escalation trigger on job_orders.
+--
+-- The "Org members can manage own job orders" policy is deliberately
+-- broad (`for all`) so org members can create, edit content on, and
+-- delete their own draft postings. Without this trigger, the same
+-- policy would also let them:
+--
+--   update job_orders
+--   set verification_status = 'basic_verified',
+--       status              = 'published',
+--       last_verified_at    = now(),
+--       is_sponsored        = true
+--   where organization_id = <own_org>;
+--
+-- and bypass the entire admin moderation / sponsorship workflow.
+--
+-- Protected columns and rationale:
+--   verification_status   admin-only badging (per /docs/rls-policy.md §8)
+--   last_verified_at      admin-only (audit trail of admin's review)
+--   is_sponsored          admin-only (paid sponsorship is an admin op)
+--   deleted_at            admin-only (soft-delete bypasses moderation)
+--   status                state-machine: org members may only move
+--                         a job through their own legitimate
+--                         transitions {draft, pending_verification,
+--                         filled}. Promoting to published / under_review /
+--                         suspended / rejected / closing_soon / expired
+--                         is admin-only — those reflect the platform's
+--                         moderation decision, not the org's.
+--
+-- Admins / super_admins (and rows updated with no JWT, i.e. service
+-- role) bypass this trigger entirely.
+create or replace function public.job_orders_prevent_privilege_escalation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  acting_uid uuid;
+begin
+  acting_uid := auth.uid();
+
+  if acting_uid is null then
+    return new;
+  end if;
+
+  if public.is_admin(acting_uid) then
+    return new;
+  end if;
+
+  if new.verification_status is distinct from old.verification_status then
+    new.verification_status := old.verification_status;
+  end if;
+  if new.last_verified_at is distinct from old.last_verified_at then
+    new.last_verified_at := old.last_verified_at;
+  end if;
+  if new.is_sponsored is distinct from old.is_sponsored then
+    new.is_sponsored := old.is_sponsored;
+  end if;
+  if new.deleted_at is distinct from old.deleted_at then
+    new.deleted_at := old.deleted_at;
+  end if;
+
+  -- status: allow only the org-driven subset of the state machine.
+  -- Anything else (publishing, suspending, expiring, etc.) is admin
+  -- territory and is silently reverted.
+  if new.status is distinct from old.status
+     and new.status not in ('draft', 'pending_verification', 'filled') then
+    new.status := old.status;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists job_orders_prevent_privilege_escalation on public.job_orders;
+create trigger job_orders_prevent_privilege_escalation
+  before update on public.job_orders
+  for each row execute function public.job_orders_prevent_privilege_escalation();
 
 
 -- ===================================================================
