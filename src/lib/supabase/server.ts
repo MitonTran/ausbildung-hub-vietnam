@@ -1,7 +1,7 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { getSupabaseAnonKey, getSupabaseUrl } from "./env";
@@ -12,28 +12,26 @@ import type { Profile, UserRole } from "./types";
  * Use in Server Components, Route Handlers, and Server Actions.
  *
  * Authenticates as the end user (RLS applies). Never uses the service role key.
+ *
+ * Uses the `getAll` / `setAll` pattern required by `@supabase/ssr` >= 0.5.
  */
 export function createSupabaseServerClient(): SupabaseClient {
   const cookieStore = cookies();
 
   return createServerClient(getSupabaseUrl(), getSupabaseAnonKey(), {
     cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value;
+      getAll() {
+        return cookieStore.getAll();
       },
-      set(name: string, value: string, options: CookieOptions) {
+      setAll(cookiesToSet) {
         try {
-          cookieStore.set({ name, value, ...options });
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set({ name, value, ...options });
+          });
         } catch {
-          // Called from a Server Component render: cookies cannot be mutated here.
-          // Middleware / Route Handlers / Server Actions handle session refresh.
-        }
-      },
-      remove(name: string, options: CookieOptions) {
-        try {
-          cookieStore.set({ name, value: "", ...options });
-        } catch {
-          // See note above.
+          // Called from a Server Component render: cookies cannot be
+          // mutated there. Middleware / Route Handlers / Server Actions
+          // are the contexts that actually refresh the session.
         }
       },
     },
