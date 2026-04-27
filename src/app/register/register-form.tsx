@@ -7,9 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 
-import { signUpAction, type AuthState } from "../(auth)/actions";
-
-const initialState: AuthState = { error: null };
+import { signUpAction, initialAuthState } from "../(auth)/actions";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -21,7 +19,7 @@ function SubmitButton() {
 }
 
 export function RegisterForm() {
-  const [state, formAction] = useFormState(signUpAction, initialState);
+  const [state, formAction] = useFormState(signUpAction, initialAuthState);
 
   return (
     <form action={formAction} className="space-y-3">
@@ -43,6 +41,11 @@ export function RegisterForm() {
       {state.error ? (
         <p className="text-sm text-red-500" role="alert">
           {state.error}
+        </p>
+      ) : null}
+      {state.message ? (
+        <p className="text-sm text-emerald-500" role="status">
+          {state.message}
         </p>
       ) : null}
       <SubmitButton />

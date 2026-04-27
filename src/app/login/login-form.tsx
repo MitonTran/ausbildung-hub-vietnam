@@ -6,9 +6,7 @@ import { useFormState, useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-import { signInAction, type AuthState } from "../(auth)/actions";
-
-const initialState: AuthState = { error: null };
+import { signInAction, initialAuthState } from "../(auth)/actions";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -20,7 +18,7 @@ function SubmitButton() {
 }
 
 export function LoginForm() {
-  const [state, formAction] = useFormState(signInAction, initialState);
+  const [state, formAction] = useFormState(signInAction, initialAuthState);
 
   return (
     <form action={formAction} className="space-y-3">
@@ -37,11 +35,15 @@ export function LoginForm() {
         autoComplete="current-password"
         placeholder="Mật khẩu"
         required
-        minLength={8}
       />
       {state.error ? (
         <p className="text-sm text-red-500" role="alert">
           {state.error}
+        </p>
+      ) : null}
+      {state.message ? (
+        <p className="text-sm text-emerald-500" role="status">
+          {state.message}
         </p>
       ) : null}
       <SubmitButton />

@@ -12,20 +12,39 @@ const SIGNUP_ROLES: ReadonlyArray<UserRole> = [
   "employer_admin",
 ];
 
-export type AuthState = { error: string | null };
+const SIGNUP_MIN_PASSWORD_LENGTH = 8;
 
-function readEmailPassword(formData: FormData): {
+export type AuthState = {
+  error: string | null;
+  message: string | null;
+};
+
+export const initialAuthState: AuthState = { error: null, message: null };
+
+type Credentials = {
   email: string;
   password: string;
   error: string | null;
-} {
+};
+
+function readCredentials(
+  formData: FormData,
+  options: { enforceMinLength?: boolean } = {}
+): Credentials {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   if (!email || !password) {
     return { email, password, error: "Vui lòng nhập email và mật khẩu." };
   }
-  if (password.length < 8) {
-    return { email, password, error: "Mật khẩu phải có ít nhất 8 ký tự." };
+  if (
+    options.enforceMinLength &&
+    password.length < SIGNUP_MIN_PASSWORD_LENGTH
+  ) {
+    return {
+      email,
+      password,
+      error: `Mật khẩu phải có ít nhất ${SIGNUP_MIN_PASSWORD_LENGTH} ký tự.`,
+    };
   }
   return { email, password, error: null };
 }
@@ -34,8 +53,8 @@ export async function signInAction(
   _prev: AuthState,
   formData: FormData
 ): Promise<AuthState> {
-  const { email, password, error } = readEmailPassword(formData);
-  if (error) return { error };
+  const { email, password, error } = readCredentials(formData);
+  if (error) return { error, message: null };
 
   const supabase = createSupabaseServerClient();
   const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -43,7 +62,7 @@ export async function signInAction(
     password,
   });
   if (signInError) {
-    return { error: "Email hoặc mật khẩu không đúng." };
+    return { error: "Email hoặc mật khẩu không đúng.", message: null };
   }
 
   revalidatePath("/", "layout");
@@ -54,8 +73,10 @@ export async function signUpAction(
   _prev: AuthState,
   formData: FormData
 ): Promise<AuthState> {
-  const { email, password, error } = readEmailPassword(formData);
-  if (error) return { error };
+  const { email, password, error } = readCredentials(formData, {
+    enforceMinLength: true,
+  });
+  if (error) return { error, message: null };
 
   const fullName = String(formData.get("full_name") ?? "").trim();
   const requestedRole = String(formData.get("role") ?? "student");
@@ -66,11 +87,11 @@ export async function signUpAction(
     : "student";
 
   if (!SIGNUP_ROLES.includes(role)) {
-    return { error: "Vai trò không hợp lệ." };
+    return { error: "Vai trò không hợp lệ.", message: null };
   }
 
   const supabase = createSupabaseServerClient();
-  const { error: signUpError } = await supabase.auth.signUp({
+  const { data, error: signUpError } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -81,13 +102,24 @@ export async function signUpAction(
     },
   });
   if (signUpError) {
-    return { error: signUpError.message };
+    return { error: signUpError.message, message: null };
   }
 
-  // Profile row is created by the `on_auth_user_created` trigger
-  // (see supabase/migrations/0001_profiles_foundation.sql). When email
-  // confirmation is enabled, the user must confirm before signInWithPassword
-  // will succeed — Supabase returns no session here in that case.
+  // Profile row is created by the on_auth_user_created trigger
+  // (see supabase/migrations/0001_profiles_foundation.sql).
+  //
+  // When email confirmation is ENABLED in the Supabase project,
+  // signUp returns a user but no session — the user must click the
+  // email link before they can sign in. Surface that to the form
+  // instead of bouncing through /dashboard → /login silently.
+  if (!data.session) {
+    return {
+      error: null,
+      message:
+        "Tài khoản đã được tạo. Vui lòng kiểm tra email để xác nhận trước khi đăng nhập.",
+    };
+  }
+
   revalidatePath("/", "layout");
   redirect("/dashboard");
 }
