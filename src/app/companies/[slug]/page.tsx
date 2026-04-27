@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/card";
 import { OrganizationVerificationBadge } from "@/components/organization-verification-badge";
 import { ReportTarget } from "@/components/report-target";
+import { ReviewSection } from "@/components/review-section";
 import { companies, findCompany, jobOrders } from "@/lib/mock-data";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -200,6 +201,8 @@ export default async function CompanyDetailPage({
           )}
         </CardContent>
       </Card>
+
+      {dbOrg ? <ReviewSection organization={dbOrg} /> : null}
     </div>
   );
 }

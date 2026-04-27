@@ -19,6 +19,7 @@ import { Progress } from "@/components/ui/progress";
 import { CenterCard } from "@/components/cards/center-card";
 import { OrganizationVerificationBadge } from "@/components/organization-verification-badge";
 import { ReportTarget } from "@/components/report-target";
+import { ReviewSection } from "@/components/review-section";
 import {
   centers,
   findCenter,
@@ -301,6 +302,8 @@ export default async function CenterDetailPage({
               </div>
             </CardContent>
           </Card>
+
+          {dbOrg ? <ReviewSection organization={dbOrg} /> : null}
         </div>
 
         <aside className="space-y-4">
