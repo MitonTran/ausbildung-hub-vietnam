@@ -133,7 +133,12 @@ export async function approveOrganizationVerificationAction(
   // 2. Promote the organization. Trust columns can only be changed
   //    via the service role (the privilege-escalation trigger
   //    short-circuits when auth.uid() is null).
-  const { error: updateOrgError } = await supabase
+  //
+  //    Optimistic concurrency on is_suspended: if another admin
+  //    suspended the org between when we loaded it and now, the
+  //    suspension MUST win — approving cannot silently un-suspend or
+  //    overwrite the "suspended" verification_status.
+  const { data: orgUpdatedRows, error: updateOrgError } = await supabase
     .from("organizations")
     .update({
       verification_status: grant,
@@ -141,10 +146,13 @@ export async function approveOrganizationVerificationAction(
       verification_expires_at: expiresAt,
       // is_suspended stays untouched — approval doesn't lift suspensions.
     })
-    .eq("id", org.id);
-  if (updateOrgError) {
-    // Roll the verification row back so the queue isn't left
-    // claiming the badge was granted while the org wasn't promoted.
+    .eq("id", org.id)
+    .eq("is_suspended", false)
+    .select("id");
+  // Helper to revert the verification row on any failure path so the
+  // queue isn't left claiming the badge was granted while the org
+  // wasn't actually promoted.
+  const rollbackVerification = async () => {
     await supabase
       .from("organization_verifications")
       .update({
@@ -157,7 +165,16 @@ export async function approveOrganizationVerificationAction(
         admin_note: verification.admin_note,
       })
       .eq("id", id);
+  };
+  if (updateOrgError) {
+    await rollbackVerification();
     console.error("[approveOrgVerification:org]", updateOrgError);
+    return;
+  }
+  if (!orgUpdatedRows || orgUpdatedRows.length === 0) {
+    // The org was suspended (is_suspended=true) under us — bail and
+    // restore the verification row to its prior state.
+    await rollbackVerification();
     return;
   }
 
