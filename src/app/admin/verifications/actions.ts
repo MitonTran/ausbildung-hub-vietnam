@@ -81,7 +81,12 @@ export async function approveVerificationAction(formData: FormData) {
     .eq("id", verification.user_id)
     .maybeSingle();
 
-  const { error: updateVerifError } = await supabase
+  // Optimistic concurrency: scope the UPDATE to the status we read
+  // above. If a concurrent admin action moved the row to a different
+  // status between our load and our write, this UPDATE matches zero
+  // rows and we abort — we never silently overwrite another admin's
+  // decision.
+  const { data: updatedVerifRows, error: updateVerifError } = await supabase
     .from("user_verifications")
     .update({
       status: "approved",
@@ -91,9 +96,15 @@ export async function approveVerificationAction(formData: FormData) {
       rejection_reason: null,
       admin_note: reason,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("status", verification.status)
+    .select("id");
   if (updateVerifError) {
     console.error("[approveVerification]", updateVerifError);
+    return;
+  }
+  if (!updatedVerifRows || updatedVerifRows.length === 0) {
+    // Status changed under us — another admin acted first.
     return;
   }
 
@@ -194,7 +205,7 @@ export async function rejectVerificationAction(formData: FormData) {
 
   const reviewedAt = new Date();
   const supabase = createSupabaseAdminClient();
-  const { error } = await supabase
+  const { data: rejectedRows, error } = await supabase
     .from("user_verifications")
     .update({
       status: "rejected",
@@ -203,11 +214,14 @@ export async function rejectVerificationAction(formData: FormData) {
       rejection_reason: rejectionReason.slice(0, 500),
       admin_note: null,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("status", verification.status) // optimistic concurrency
+    .select("id");
   if (error) {
     console.error("[rejectVerification]", error);
     return;
   }
+  if (!rejectedRows || rejectedRows.length === 0) return;
 
   await writeAuditLog({
     actorId: admin.id,
@@ -249,7 +263,7 @@ export async function requestMoreInfoAction(formData: FormData) {
   }
 
   const supabase = createSupabaseAdminClient();
-  const { error } = await supabase
+  const { data: nmiRows, error } = await supabase
     .from("user_verifications")
     .update({
       status: "need_more_info",
@@ -257,11 +271,14 @@ export async function requestMoreInfoAction(formData: FormData) {
       reviewed_at: new Date().toISOString(),
       admin_note: adminNote.slice(0, 1000),
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("status", verification.status) // optimistic concurrency
+    .select("id");
   if (error) {
     console.error("[requestMoreInfo]", error);
     return;
   }
+  if (!nmiRows || nmiRows.length === 0) return;
 
   await writeAuditLog({
     actorId: admin.id,
@@ -315,7 +332,7 @@ export async function expireOrRevokeVerificationAction(formData: FormData) {
     .eq("id", verification.user_id)
     .maybeSingle();
 
-  const { error } = await supabase
+  const { data: expRevRows, error } = await supabase
     .from("user_verifications")
     .update({
       status: newStatus,
@@ -323,11 +340,14 @@ export async function expireOrRevokeVerificationAction(formData: FormData) {
       reviewed_at: new Date().toISOString(),
       admin_note: reason,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("status", verification.status) // optimistic concurrency
+    .select("id");
   if (error) {
     console.error("[expireOrRevoke]", error);
     return;
   }
+  if (!expRevRows || expRevRows.length === 0) return;
 
   // If the target profile's currently-active verified_stage matches
   // this verification's requested stage, clear it. Don't touch the
