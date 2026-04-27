@@ -6,7 +6,9 @@ import { useFormState, useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-import { signInAction, initialAuthState } from "../(auth)/actions";
+import { signInAction, type AuthState } from "../(auth)/actions";
+
+const initialState: AuthState = { error: null, message: null };
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -18,7 +20,7 @@ function SubmitButton() {
 }
 
 export function LoginForm() {
-  const [state, formAction] = useFormState(signInAction, initialAuthState);
+  const [state, formAction] = useFormState(signInAction, initialState);
 
   return (
     <form action={formAction} className="space-y-3">

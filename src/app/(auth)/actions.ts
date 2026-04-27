@@ -19,8 +19,6 @@ export type AuthState = {
   message: string | null;
 };
 
-export const initialAuthState: AuthState = { error: null, message: null };
-
 type Credentials = {
   email: string;
   password: string;
