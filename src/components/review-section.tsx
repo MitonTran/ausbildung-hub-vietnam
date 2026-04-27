@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ReportButton } from "@/components/report-button";
 import { ReviewForm } from "@/components/review-form";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -183,11 +184,22 @@ export async function ReviewSection({
                 <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                   {r.content}
                 </p>
-                <div className="text-[11px] text-muted-foreground">
-                  Đăng{" "}
-                  {new Date(
-                    r.published_at ?? r.created_at
-                  ).toLocaleDateString("vi-VN")}
+                <div className="flex items-center justify-between">
+                  <div className="text-[11px] text-muted-foreground">
+                    Đăng{" "}
+                    {new Date(
+                      r.published_at ?? r.created_at
+                    ).toLocaleDateString("vi-VN")}
+                  </div>
+                  <ReportButton
+                    targetType="review"
+                    targetId={r.id}
+                    targetLabel={r.title ?? "Đánh giá"}
+                    isAuthenticated={!!profile}
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto px-2 py-1 text-xs"
+                  />
                 </div>
               </div>
             ))
