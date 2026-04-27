@@ -470,19 +470,26 @@ create policy "Admins can manage user verification requests"
 
 -- Privilege-escalation trigger on user_verifications.
 --
--- The "Users can update pending own verification requests" policy
--- intentionally allows owners to edit their own pending requests
--- (they may need to add evidence files, fix typos, etc.). However
--- without a trigger, an owner could also self-approve their request
--- via `update user_verifications set status = 'approved' where id =
--- <own_id>`: USING is satisfied (old.status = 'pending') and
--- WITH CHECK is satisfied (user_id = auth.uid()). Splitting the
--- policy into per-column WITH CHECK clauses is not expressible in
--- standard Postgres RLS, so we mirror the
--- `profiles_prevent_privilege_escalation` pattern from 0001 and
--- silently revert any non-admin attempt to mutate the moderation
--- columns. Admins (and the service role, which bypasses RLS but
--- still hits this trigger) can change anything.
+-- Two attack surfaces are closed here:
+--
+--   * UPDATE: the "Users can update pending own verification
+--     requests" policy lets owners edit their own pending requests
+--     (evidence files, typos). Without a trigger, an owner could
+--     also self-approve via `update user_verifications set
+--     status = 'approved' where id = <own_id>`: USING is satisfied
+--     (old.status = 'pending') and WITH CHECK is satisfied
+--     (user_id = auth.uid()).
+--   * INSERT: the "Users can create own verification requests"
+--     policy WITH CHECK only validates ownership of user_id, not
+--     the values of status/reviewed_by/admin_note. Without a
+--     trigger, an owner could self-approve **on creation** via
+--     `insert into user_verifications (user_id, status, ...)
+--      values ('<self>', 'approved', ...)`.
+--
+-- The trigger fires BEFORE INSERT OR UPDATE and, for non-admins,
+-- either reverts each protected column to its OLD value (UPDATE)
+-- or clamps it to the safe default (INSERT). Admins and rows
+-- inserted with no JWT (service role) are passed through.
 create or replace function public.user_verifications_prevent_privilege_escalation()
 returns trigger
 language plpgsql
@@ -500,12 +507,24 @@ begin
     return new;
   end if;
 
-  -- Admins / super_admins can change any column.
+  -- Admins / super_admins can write any value.
   if public.is_admin(acting_uid) then
     return new;
   end if;
 
-  -- Otherwise: revert moderation columns. user_id is also pinned so
+  if TG_OP = 'INSERT' then
+    -- Clamp moderation columns to their safe defaults so a user
+    -- cannot ship a row that is already approved.
+    new.status           := 'pending';
+    new.reviewed_by      := null;
+    new.reviewed_at      := null;
+    new.expires_at       := null;
+    new.rejection_reason := null;
+    new.admin_note       := null;
+    return new;
+  end if;
+
+  -- UPDATE: revert moderation columns. user_id is also pinned so
   -- a malicious owner cannot reassign their own request to another
   -- user.
   if new.user_id is distinct from old.user_id then
@@ -536,7 +555,7 @@ $$;
 
 drop trigger if exists user_verifications_prevent_privilege_escalation on public.user_verifications;
 create trigger user_verifications_prevent_privilege_escalation
-  before update on public.user_verifications
+  before insert or update on public.user_verifications
   for each row execute function public.user_verifications_prevent_privilege_escalation();
 
 
@@ -580,6 +599,84 @@ create policy "Admins can manage organization verification requests"
   to authenticated
   using (public.is_admin(auth.uid()))
   with check (public.is_admin(auth.uid()));
+
+-- Privilege-escalation trigger on organization_verifications.
+--
+-- The "Org members can create verification requests" INSERT policy
+-- WITH CHECK only validates that the caller is a member of the
+-- target organization and that submitted_by = auth.uid(); it does
+-- not constrain status/reviewed_by/admin_note. Without this
+-- trigger, an org member could ship a row that is already approved
+-- via `insert into organization_verifications (..., status,
+-- reviewed_by, admin_note) values (..., 'approved', '<self>',
+-- 'lgtm')` and bypass the admin verification queue entirely.
+--
+-- There is no UPDATE policy for non-admins on this table (only the
+-- admin "for all" policy can update), so the UPDATE branch is
+-- defensive: it costs nothing and matches the pattern used by the
+-- other tables.
+create or replace function public.organization_verifications_prevent_privilege_escalation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  acting_uid uuid;
+begin
+  acting_uid := auth.uid();
+
+  if acting_uid is null then
+    return new;
+  end if;
+
+  if public.is_admin(acting_uid) then
+    return new;
+  end if;
+
+  if TG_OP = 'INSERT' then
+    new.status           := 'pending';
+    new.reviewed_by      := null;
+    new.reviewed_at      := null;
+    new.expires_at       := null;
+    new.rejection_reason := null;
+    new.admin_note       := null;
+    return new;
+  end if;
+
+  if new.organization_id is distinct from old.organization_id then
+    new.organization_id := old.organization_id;
+  end if;
+  if new.submitted_by is distinct from old.submitted_by then
+    new.submitted_by := old.submitted_by;
+  end if;
+  if new.status is distinct from old.status then
+    new.status := old.status;
+  end if;
+  if new.reviewed_by is distinct from old.reviewed_by then
+    new.reviewed_by := old.reviewed_by;
+  end if;
+  if new.reviewed_at is distinct from old.reviewed_at then
+    new.reviewed_at := old.reviewed_at;
+  end if;
+  if new.expires_at is distinct from old.expires_at then
+    new.expires_at := old.expires_at;
+  end if;
+  if new.rejection_reason is distinct from old.rejection_reason then
+    new.rejection_reason := old.rejection_reason;
+  end if;
+  if new.admin_note is distinct from old.admin_note then
+    new.admin_note := old.admin_note;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists organization_verifications_prevent_privilege_escalation on public.organization_verifications;
+create trigger organization_verifications_prevent_privilege_escalation
+  before insert or update on public.organization_verifications
+  for each row execute function public.organization_verifications_prevent_privilege_escalation();
 
 
 -- ===================================================================
@@ -634,19 +731,26 @@ create policy "Moderators can read all job orders"
 
 -- Privilege-escalation trigger on job_orders.
 --
--- The "Org members can manage own job orders" policy is deliberately
--- broad (`for all`) so org members can create, edit content on, and
--- delete their own draft postings. Without this trigger, the same
--- policy would also let them:
+-- The "Org members can manage own job orders" policy is
+-- deliberately broad (`for all`) so org members can create, edit
+-- content on, and delete their own draft postings. Without this
+-- trigger, the same policy would let them:
 --
---   update job_orders
---   set verification_status = 'basic_verified',
---       status              = 'published',
---       last_verified_at    = now(),
---       is_sponsored        = true
---   where organization_id = <own_org>;
+--   * UPDATE: self-publish + self-grant the trust badge:
+--       update job_orders
+--       set verification_status = 'basic_verified',
+--           status              = 'published',
+--           last_verified_at    = now(),
+--           is_sponsored        = true
+--       where organization_id = <own_org>;
 --
--- and bypass the entire admin moderation / sponsorship workflow.
+--   * INSERT: ship a row that is already published + verified:
+--       insert into job_orders (organization_id, ..., status,
+--           verification_status, is_sponsored)
+--       values ('<own_org>', ..., 'published',
+--           'basic_verified', true);
+--
+-- Both paths bypass the admin moderation / sponsorship workflow.
 --
 -- Protected columns and rationale:
 --   verification_status   admin-only badging (per /docs/rls-policy.md §8)
@@ -661,8 +765,13 @@ create policy "Moderators can read all job orders"
 --                         is admin-only — those reflect the platform's
 --                         moderation decision, not the org's.
 --
--- Admins / super_admins (and rows updated with no JWT, i.e. service
--- role) bypass this trigger entirely.
+-- On INSERT, non-admins always start at `(status='draft',
+-- verification_status='pending_verification', is_sponsored=false)`
+-- (the table's own column defaults). On UPDATE, non-admin writes
+-- to those columns are reverted to OLD.
+--
+-- Admins / super_admins (and rows written with no JWT, i.e.
+-- service role) bypass this trigger entirely.
 create or replace function public.job_orders_prevent_privilege_escalation()
 returns trigger
 language plpgsql
@@ -679,6 +788,23 @@ begin
   end if;
 
   if public.is_admin(acting_uid) then
+    return new;
+  end if;
+
+  if TG_OP = 'INSERT' then
+    -- A non-admin INSERT must start in the draft moderation state,
+    -- regardless of what the client passed. The status itself is
+    -- allowed to be 'draft' or 'pending_verification' (org may
+    -- submit for review at creation time); anything else is forced
+    -- to 'draft'.
+    if new.status is null
+       or new.status not in ('draft', 'pending_verification') then
+      new.status := 'draft';
+    end if;
+    new.verification_status := 'pending_verification';
+    new.last_verified_at    := null;
+    new.is_sponsored        := false;
+    new.deleted_at          := null;
     return new;
   end if;
 
@@ -709,7 +835,7 @@ $$;
 
 drop trigger if exists job_orders_prevent_privilege_escalation on public.job_orders;
 create trigger job_orders_prevent_privilege_escalation
-  before update on public.job_orders
+  before insert or update on public.job_orders
   for each row execute function public.job_orders_prevent_privilege_escalation();
 
 
@@ -771,14 +897,23 @@ create policy "Moderators and admins can manage reviews"
 
 -- Privilege-escalation trigger on reviews.
 --
--- Without this trigger, the "Users can update pending own reviews"
--- policy lets an owner publish their own review:
---   update reviews set moderation_status = 'published' where id = <own_id>;
--- USING passes (old.moderation_status = 'pending'), WITH CHECK
--- passes (reviewer_id = auth.uid()). The trigger reverts
--- moderation columns and the reviewer_id pin so non-mods cannot
--- self-publish, set publishing metadata, file rejection reasons, or
--- reassign authorship.
+-- Closes both UPDATE and INSERT self-publish attacks:
+--
+--   * UPDATE: the "Users can update pending own reviews" policy
+--     lets an owner mutate their own review while it is pending.
+--     Without a trigger they could publish it themselves via
+--     `update reviews set moderation_status='published' where
+--      id = <own_id>` because the WITH CHECK only validates
+--     reviewer ownership.
+--   * INSERT: the "Users can create own reviews" policy WITH CHECK
+--     only validates that reviewer_id = auth.uid(). Without a
+--     trigger they could self-publish on creation via `insert
+--     into reviews (reviewer_id, moderation_status, published_at,
+--     ...) values ('<self>', 'published', now(), ...)`.
+--
+-- For non-mods, INSERT clamps moderation columns to their safe
+-- defaults; UPDATE reverts them to OLD. Moderators / admins /
+-- super_admins (and rows written with no JWT) bypass.
 create or replace function public.reviews_prevent_privilege_escalation()
 returns trigger
 language plpgsql
@@ -794,8 +929,17 @@ begin
     return new;
   end if;
 
-  -- Moderators, admins, and super_admins can change any column.
+  -- Moderators, admins, and super_admins can write any value.
   if public.is_moderator_or_admin(acting_uid) then
+    return new;
+  end if;
+
+  if TG_OP = 'INSERT' then
+    new.moderation_status := 'pending';
+    new.published_at      := null;
+    new.rejected_reason   := null;
+    new.dispute_status    := null;
+    new.deleted_at        := null;
     return new;
   end if;
 
@@ -824,7 +968,7 @@ $$;
 
 drop trigger if exists reviews_prevent_privilege_escalation on public.reviews;
 create trigger reviews_prevent_privilege_escalation
-  before update on public.reviews
+  before insert or update on public.reviews
   for each row execute function public.reviews_prevent_privilege_escalation();
 
 
@@ -913,15 +1057,12 @@ create policy "Moderators and admins can manage review proofs"
 
 -- Privilege-escalation trigger on review_proofs.
 --
--- The "Users can update own review proofs while pending" policy
--- allows a reviewer to edit their own proof rows, which is needed so
--- they can swap a wrong file or correct mime/path metadata. Without
--- this trigger, the same policy would also let them self-approve
--- their own evidence:
---   update review_proofs set status = 'approved' where id = <own_id>;
--- The trigger reverts the moderation columns (status, reviewed_by,
--- reviewed_at, rejection_reason) and the uploaded_by / review_id
--- pins for non-moderators.
+-- Closes both UPDATE and INSERT self-approval attacks. The
+-- "Users can upload proofs for own reviews" INSERT policy WITH
+-- CHECK only validates that the parent review belongs to the
+-- caller; without this trigger the user could ship a row that
+-- already has `status='approved', reviewed_by=<self>`. Same shape
+-- as the user_verifications fix.
 create or replace function public.review_proofs_prevent_privilege_escalation()
 returns trigger
 language plpgsql
@@ -938,6 +1079,14 @@ begin
   end if;
 
   if public.is_moderator_or_admin(acting_uid) then
+    return new;
+  end if;
+
+  if TG_OP = 'INSERT' then
+    new.status           := 'pending';
+    new.reviewed_by      := null;
+    new.reviewed_at      := null;
+    new.rejection_reason := null;
     return new;
   end if;
 
@@ -966,7 +1115,7 @@ $$;
 
 drop trigger if exists review_proofs_prevent_privilege_escalation on public.review_proofs;
 create trigger review_proofs_prevent_privilege_escalation
-  before update on public.review_proofs
+  before insert or update on public.review_proofs
   for each row execute function public.review_proofs_prevent_privilege_escalation();
 
 
