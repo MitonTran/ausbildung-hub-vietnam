@@ -821,12 +821,19 @@ begin
     new.deleted_at := old.deleted_at;
   end if;
 
-  -- status: allow only the org-driven subset of the state machine.
-  -- Anything else (publishing, suspending, expiring, etc.) is admin
-  -- territory and is silently reverted.
-  if new.status is distinct from old.status
-     and new.status not in ('draft', 'pending_verification', 'filled') then
-    new.status := old.status;
+  -- status: allow only the org-driven subset of the state machine,
+  -- in BOTH directions. Org members can only transition between
+  -- {draft, pending_verification, filled}; they cannot move OUT of
+  -- an admin-controlled state (suspended, rejected, published,
+  -- under_review, closing_soon, expired) even if the destination is
+  -- a user-state. Otherwise an org member could undo an admin
+  -- suspension via `update job_orders set status='draft' where ...`
+  -- — the destination is a "user" state but the source was admin.
+  if new.status is distinct from old.status then
+    if old.status not in ('draft', 'pending_verification', 'filled')
+       or new.status not in ('draft', 'pending_verification', 'filled') then
+      new.status := old.status;
+    end if;
   end if;
 
   return new;
