@@ -6,6 +6,7 @@ import { useFormState, useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { USER_STAGES, USER_STAGE_LABEL_VI } from "@/lib/verification";
 
 import { signUpAction, type AuthState } from "../(auth)/actions";
 
@@ -31,6 +32,28 @@ export function RegisterForm() {
         <option value="center_admin">Quản trị trung tâm tiếng Đức</option>
         <option value="employer_admin">Nhà tuyển dụng / Agency</option>
       </Select>
+      <div className="space-y-1">
+        <label
+          htmlFor="self_declared_stage"
+          className="block text-xs font-medium text-muted-foreground"
+        >
+          Bạn đang ở giai đoạn nào trong hành trình du học nghề Đức?
+        </label>
+        <Select
+          id="self_declared_stage"
+          name="self_declared_stage"
+          defaultValue="exploring"
+        >
+          {USER_STAGES.map((s) => (
+            <option key={s} value={s}>
+              {USER_STAGE_LABEL_VI[s]}
+            </option>
+          ))}
+        </Select>
+        <p className="text-[11px] text-muted-foreground">
+          Đây là trạng thái bạn tự khai báo và <strong>chưa</strong> được xác minh.
+        </p>
+      </div>
       <Input name="email" type="email" autoComplete="email" placeholder="Email" required />
       <Input
         name="password"

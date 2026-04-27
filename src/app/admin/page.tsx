@@ -32,7 +32,7 @@ const NAV = [
   { href: "#", label: "Reviews", icon: <MessagesSquare className="h-4 w-4" /> },
   { href: "#", label: "Bài cộng đồng", icon: <MessagesSquare className="h-4 w-4" /> },
   { href: "#", label: "Báo cáo (Reports)", icon: <Flag className="h-4 w-4" /> },
-  { href: "#", label: "Verification", icon: <ShieldCheck className="h-4 w-4" /> },
+  { href: "/admin/verifications", label: "Verification", icon: <ShieldCheck className="h-4 w-4" /> },
   { href: "#", label: "Analytics", icon: <BarChart3 className="h-4 w-4" /> },
   { href: "#", label: "Cài đặt", icon: <Settings className="h-4 w-4" /> },
 ];

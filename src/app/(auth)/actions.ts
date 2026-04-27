@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { USER_ROLES, type UserRole } from "@/lib/supabase/types";
+import { USER_STAGES, type UserStage } from "@/lib/verification";
 
 const SIGNUP_ROLES: ReadonlyArray<UserRole> = [
   "student",
@@ -88,6 +89,13 @@ export async function signUpAction(
     return { error: "Vai trò không hợp lệ.", message: null };
   }
 
+  const requestedStage = String(formData.get("self_declared_stage") ?? "exploring");
+  const selfDeclaredStage: UserStage = (
+    USER_STAGES as ReadonlyArray<string>
+  ).includes(requestedStage)
+    ? (requestedStage as UserStage)
+    : "exploring";
+
   const supabase = createSupabaseServerClient();
   const { data, error: signUpError } = await supabase.auth.signUp({
     email,
@@ -96,6 +104,7 @@ export async function signUpAction(
       data: {
         full_name: fullName || null,
         role,
+        self_declared_stage: selfDeclaredStage,
       },
     },
   });

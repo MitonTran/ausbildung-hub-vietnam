@@ -121,6 +121,26 @@ export default async function DashboardPage() {
           </Card>
         ) : null}
 
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <ShieldCheck className="h-4 w-4" />
+              Xác minh trạng thái
+            </CardTitle>
+            <CardDescription>
+              Gửi bằng chứng để được cấp huy hiệu xác minh giai đoạn của bạn.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="outline">
+              <Link href="/dashboard/verification">
+                Mở trang xác minh
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle className="text-lg">Tài khoản</CardTitle>
