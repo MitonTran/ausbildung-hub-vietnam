@@ -56,7 +56,17 @@ export async function approveVerificationAction(formData: FormData) {
 
   const verification = await loadVerification(id);
   if (!verification) return;
-  if (verification.status === "approved") return;
+  // Mirrors the other admin actions: only an open request (pending or
+  // need_more_info) can be approved. Re-approving a previously
+  // rejected / expired / revoked row would restore a badge that was
+  // intentionally taken away — including for fraud — and bypass the
+  // intended user-resubmission flow.
+  if (
+    verification.status !== "pending" &&
+    verification.status !== "need_more_info"
+  ) {
+    return;
+  }
 
   const requestedStage = verification.requested_stage as UserStage;
   if (!(USER_STAGES as ReadonlyArray<string>).includes(requestedStage)) return;
