@@ -123,6 +123,13 @@ export default async function OrganizationDashboardDetailPage({
           {org.city ? ` · ${org.city}` : ""} ·{" "}
           <span className="uppercase">{membership.member_role}</span>
         </p>
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/dashboard/organization/${org.id}/jobs`}>
+              Quản lý đơn tuyển
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Card>
