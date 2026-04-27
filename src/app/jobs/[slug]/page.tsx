@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { JobCard } from "@/components/cards/job-card";
+import { ReportTarget } from "@/components/report-target";
 import { jobOrders, findJob } from "@/lib/mock-data";
 import { formatDate } from "@/lib/utils";
 
@@ -34,11 +35,19 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
 
   return (
     <div className="container py-8 space-y-6">
-      <Button asChild variant="ghost" size="sm">
-        <Link href="/jobs">
-          <ArrowLeft className="h-4 w-4" /> Tất cả việc làm
-        </Link>
-      </Button>
+      <div className="flex items-center justify-between gap-2">
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/jobs">
+            <ArrowLeft className="h-4 w-4" /> Tất cả việc làm
+          </Link>
+        </Button>
+        <ReportTarget
+          targetType="job_order"
+          targetId={job.id}
+          targetLabel={job.title}
+          variant="ghost"
+        />
+      </div>
 
       <Card>
         <CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-start">

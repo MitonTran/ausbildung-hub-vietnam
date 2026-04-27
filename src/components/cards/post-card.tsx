@@ -1,12 +1,19 @@
-import { MessageCircle, ThumbsUp, Bookmark, Flag } from "lucide-react";
+import { MessageCircle, ThumbsUp, Bookmark } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { ReportButton } from "@/components/report-button";
 import type { CommunityPost } from "@/types";
 import { relativeTime } from "@/lib/utils";
 import { categoryColor } from "@/lib/badge-colors";
 
-export function PostCard({ post }: { post: CommunityPost }) {
+export function PostCard({
+  post,
+  isAuthenticated = false,
+}: {
+  post: CommunityPost;
+  isAuthenticated?: boolean;
+}) {
   return (
     <Card>
       <CardContent className="p-5">
@@ -42,9 +49,17 @@ export function PostCard({ post }: { post: CommunityPost }) {
               <button className="flex items-center gap-1 hover:text-foreground">
                 <Bookmark className="h-3.5 w-3.5" /> Lưu
               </button>
-              <button className="ml-auto flex items-center gap-1 hover:text-destructive">
-                <Flag className="h-3.5 w-3.5" /> Báo cáo
-              </button>
+              <div className="ml-auto">
+                <ReportButton
+                  targetType="community_post"
+                  targetId={post.id}
+                  targetLabel={post.title}
+                  isAuthenticated={isAuthenticated}
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto px-2 py-1 text-xs"
+                />
+              </div>
             </div>
           </div>
         </div>

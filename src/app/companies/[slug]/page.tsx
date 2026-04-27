@@ -18,6 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { OrganizationVerificationBadge } from "@/components/organization-verification-badge";
+import { ReportTarget } from "@/components/report-target";
 import { companies, findCompany, jobOrders } from "@/lib/mock-data";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -64,11 +65,19 @@ export default async function CompanyDetailPage({
 
   return (
     <div className="container space-y-6 py-8">
-      <Button asChild variant="ghost" size="sm">
-        <Link href="/companies">
-          <ArrowLeft className="h-4 w-4" /> Tất cả doanh nghiệp
-        </Link>
-      </Button>
+      <div className="flex items-center justify-between gap-2">
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/companies">
+            <ArrowLeft className="h-4 w-4" /> Tất cả doanh nghiệp
+          </Link>
+        </Button>
+        <ReportTarget
+          targetType="organization"
+          targetId={dbOrg?.id ?? company.id}
+          targetLabel={dbOrg?.brand_name ?? company.name}
+          variant="ghost"
+        />
+      </div>
 
       <Card>
         <CardContent className="flex flex-col gap-6 p-6 md:flex-row md:items-start">

@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { CenterCard } from "@/components/cards/center-card";
 import { OrganizationVerificationBadge } from "@/components/organization-verification-badge";
+import { ReportTarget } from "@/components/report-target";
 import {
   centers,
   findCenter,
@@ -70,11 +71,19 @@ export default async function CenterDetailPage({
 
   return (
     <div className="container py-8 space-y-6">
-      <Button asChild variant="ghost" size="sm">
-        <Link href="/centers">
-          <ArrowLeft className="h-4 w-4" /> Tất cả trung tâm
-        </Link>
-      </Button>
+      <div className="flex items-center justify-between gap-2">
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/centers">
+            <ArrowLeft className="h-4 w-4" /> Tất cả trung tâm
+          </Link>
+        </Button>
+        <ReportTarget
+          targetType="organization"
+          targetId={dbOrg?.id ?? center.id}
+          targetLabel={dbOrg?.brand_name ?? center.name}
+          variant="ghost"
+        />
+      </div>
 
       {/* Header */}
       <Card>
