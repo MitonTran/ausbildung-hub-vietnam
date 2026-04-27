@@ -50,10 +50,13 @@ async function loadOrganization(
   return (data as OrganizationRow | null) ?? null;
 }
 
-function revalidateAdminViews(verificationId: string, orgSlug?: string | null) {
+function revalidateAdminViews(verificationId: string, orgId?: string | null, orgSlug?: string | null) {
   revalidatePath("/admin/organization-verifications");
   revalidatePath(`/admin/organization-verifications/${verificationId}`);
   revalidatePath("/dashboard/organization");
+  if (orgId) {
+    revalidatePath(`/dashboard/organization/${orgId}`);
+  }
   if (orgSlug) {
     revalidatePath(`/centers/${orgSlug}`);
     revalidatePath(`/companies/${orgSlug}`);
@@ -234,7 +237,7 @@ export async function approveOrganizationVerificationAction(
     });
   }
 
-  revalidateAdminViews(id, org.slug);
+  revalidateAdminViews(id, org.id, org.slug);
 }
 
 // -------------------------------------------------------------------
@@ -307,7 +310,7 @@ export async function rejectOrganizationVerificationAction(formData: FormData) {
     reason: rejectionReason,
   });
 
-  revalidateAdminViews(id, org.slug);
+  revalidateAdminViews(id, org.id, org.slug);
 }
 
 // -------------------------------------------------------------------
@@ -360,7 +363,7 @@ export async function requestOrganizationMoreInfoAction(formData: FormData) {
     reason: adminNote,
   });
 
-  revalidateAdminViews(id, org?.slug ?? null);
+  revalidateAdminViews(id, org?.id ?? null, org?.slug ?? null);
 }
 
 // -------------------------------------------------------------------
@@ -445,7 +448,7 @@ export async function suspendOrganizationAction(formData: FormData) {
     }
   }
 
-  revalidateAdminViews(verificationId, org.slug);
+  revalidateAdminViews(verificationId, org.id, org.slug);
 }
 
 // -------------------------------------------------------------------
@@ -568,5 +571,5 @@ export async function expireOrganizationVerificationAction(formData: FormData) {
     reason,
   });
 
-  revalidateAdminViews(id, org.slug);
+  revalidateAdminViews(id, org.id, org.slug);
 }
