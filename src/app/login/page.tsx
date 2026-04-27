@@ -1,46 +1,48 @@
-import Link from "next/link";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { redirect } from "next/navigation";
 
-export default function LoginPage() {
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { getCurrentUser } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+
+import { LoginForm } from "./login-form";
+
+export default async function LoginPage() {
+  if (isSupabaseConfigured()) {
+    const user = await getCurrentUser();
+    if (user) redirect("/dashboard");
+  }
+
   return (
     <div className="container max-w-md py-12">
       <Card>
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl">Chào mừng trở lại</CardTitle>
-          <CardDescription>Đăng nhập để tiếp tục hành trình Ausbildung của bạn.</CardDescription>
+          <CardDescription>
+            Đăng nhập để tiếp tục hành trình Ausbildung của bạn.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <Input placeholder="Email hoặc số điện thoại" />
-          <Input type="password" placeholder="Mật khẩu" />
-          <div className="flex items-center justify-between text-xs">
-            <label className="flex items-center gap-2 text-muted-foreground">
-              <input type="checkbox" className="h-3.5 w-3.5 rounded border-border/40" />
-              Ghi nhớ đăng nhập
-            </label>
-            <Link href="#" className="text-primary hover:underline">
-              Quên mật khẩu?
-            </Link>
-          </div>
-          <Button variant="gradient" className="w-full">
-            Đăng nhập
-          </Button>
-          <div className="relative py-3 text-center text-xs text-muted-foreground">
-            <div className="absolute left-0 right-0 top-1/2 -z-10 h-px bg-border/40" />
-            <span className="bg-card px-3">Hoặc đăng nhập bằng</span>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <Button variant="outline" size="sm">Google</Button>
-            <Button variant="outline" size="sm">Facebook</Button>
-            <Button variant="outline" size="sm">Apple</Button>
-          </div>
-          <p className="text-center text-xs text-muted-foreground pt-2">
-            Bạn chưa có tài khoản?{" "}
-            <Link href="/register" className="text-primary hover:underline">
-              Đăng ký
-            </Link>
-          </p>
+        <CardContent>
+          {isSupabaseConfigured() ? (
+            <LoginForm />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Supabase chưa được cấu hình trong môi trường này. Hãy thêm
+              <code className="mx-1 rounded bg-muted px-1.5 py-0.5 text-xs">
+                NEXT_PUBLIC_SUPABASE_URL
+              </code>
+              và
+              <code className="mx-1 rounded bg-muted px-1.5 py-0.5 text-xs">
+                NEXT_PUBLIC_SUPABASE_ANON_KEY
+              </code>
+              vào <code>.env.local</code> để bật đăng nhập.
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

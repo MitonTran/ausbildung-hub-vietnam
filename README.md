@@ -39,10 +39,16 @@ src/
     login, register/    # /login, /register
     quiz/               # /quiz — AI eligibility placeholder
     dashboard/
+      page.tsx          # /dashboard — protected, role-aware landing
+      layout.tsx        # auth gate (redirects to /login)
       student, center, employer/
-    admin/              # /admin
+    admin/              # /admin — protected, admin/super_admin only
+      layout.tsx        # role gate
+    (auth)/
+      actions.ts        # signIn / signUp / signOut server actions
     layout.tsx          # root layout with theme + header + mobile tabs
     globals.css         # design tokens (light + dark)
+    middleware.ts       # refreshes Supabase auth cookies on every request
   components/
     ui/                 # button, card, input, badge, tabs, ...
     cards/              # news/center/company/job/post cards
@@ -51,12 +57,20 @@ src/
     site-header.tsx, mobile-tabs.tsx, site-footer.tsx
   lib/
     utils.ts            # cn(), date/currency helpers
-    supabase.ts         # browser-safe client; null if env vars missing
+    supabase/
+      env.ts            # centralised env access (throws if missing)
+      browser.ts        # createSupabaseBrowserClient — anon key, client-side
+      server.ts         # createSupabaseServerClient + getCurrentProfile
+      admin.ts          # service-role client (server-only, RLS bypass)
+      middleware.ts     # session-refresh helper used by /src/middleware.ts
+      types.ts          # UserRole + Profile types (kept in sync with SQL)
     mock-data.ts        # 8 articles · 8 centers · 8 companies · 12 jobs · 10 posts
   types/index.ts        # shared TypeScript types
 supabase/
-  schema.sql            # 14 tables + enums + indexes
-  policies.sql          # RLS policies (student / center / employer / admin)
+  migrations/
+    0001_profiles_foundation.sql  # canonical profiles table + handle_new_user
+  schema.sql            # legacy demo schema (14 tables, enums, indexes)
+  policies.sql          # legacy RLS policies
   seed.sql              # minimal sample rows
 ```
 
@@ -99,17 +113,22 @@ right away and add Supabase later.
 
 Open the SQL editor in Supabase and run, in order:
 
-1. `supabase/schema.sql` — creates enums, all 14 tables, indexes, and turns on
-   row-level security on every table.
-2. `supabase/policies.sql` — installs RLS policies:
-   - **Students** can edit their own profile + applications.
-   - **Centers** can edit only their own center profile, class intakes, and
-     teachers.
-   - **Employers** can edit only their own company profile and job orders.
-   - **Admins** (`profiles.role = 'admin'`) can read and manage everything.
-   - **Public users** can read verified centers, verified companies, open
-     jobs, and approved articles / posts / reviews.
+1. **`supabase/migrations/0001_profiles_foundation.sql`** — REQUIRED.
+   Creates the canonical `profiles` table with the 6-role check
+   (`student`, `center_admin`, `employer_admin`, `moderator`, `admin`,
+   `super_admin`), the `handle_new_user` trigger that auto-creates a
+   profile row on signup, and the RLS policies for `profiles`. Idempotent
+   — safe to re-run.
+2. *(Optional, for the wider MVP demo)* `supabase/schema.sql` and
+   `supabase/policies.sql` create the remaining 13 demo tables (centers,
+   companies, job_orders, articles, …) and their RLS policies. The
+   foundation migration above transparently upgrades the legacy
+   `user_role` enum if you've previously run `schema.sql`.
 3. *(Optional)* `supabase/seed.sql` for a few starter rows.
+
+The role / stage / verification taxonomies live in
+`/docs/database-schema.md` and `/docs/rls-policy.md` — those are the
+canonical specs going forward.
 
 ## 4. Add env variables
 
@@ -149,12 +168,27 @@ The codebase is intentionally kept **small and readable**:
 - New pages: drop a `page.tsx` under `src/app/<route>/`.
 - New shadcn-style components: drop them under `src/components/ui/`.
 
+### Auth foundation
+
+- `/login` and `/register` are wired to Supabase email/password via server
+  actions in `src/app/(auth)/actions.ts` (`signInAction`, `signUpAction`,
+  `signOutAction`).
+- `/dashboard` (auth required) and `/admin` (admin / super_admin only)
+  are gated by Server Component layouts that call `getCurrentProfile()`.
+- `src/middleware.ts` keeps the Supabase auth cookie fresh across
+  requests via `@supabase/ssr`.
+- The service-role key is only ever read inside
+  `src/lib/supabase/admin.ts`, which uses `import "server-only"` so any
+  accidental client import fails the build. The key is never exposed to
+  the browser.
+- When `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` are
+  absent the auth gates fall back to mock-data mode so the UI still
+  renders end-to-end on Vercel previews.
+
 Common follow-up tasks (good first tickets for an AI assistant):
 
 - Replace `mock-data.ts` calls in `app/jobs/page.tsx` with a Supabase query.
 - Add `app/dashboard/employer/jobs/[id]/page.tsx` for job-order editing.
-- Wire `Login` / `Register` forms to `supabase.auth.signInWithPassword` and
-  `supabase.auth.signUp`.
 - Add Stripe / VNPay payment provider in `src/app/api/checkout/route.ts`.
 - Localize VI / DE / EN with `next-intl` (the language switcher already
   persists `localStorage["ahv-lang"]`).
