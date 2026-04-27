@@ -1,89 +1,154 @@
-"use client";
+import Link from "next/link";
 
-import * as React from "react";
-import { Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { JobCard } from "@/components/cards/job-card";
-import { jobOrders } from "@/lib/mock-data";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+import {
+  ACTIVE_JOB_ORDER_STATUSES,
+  JOB_ORDER_STATUS_LABEL_VI,
+  JOB_ORDER_VERIFICATION_STATUS_LABEL_VI,
+  jobOrderDaysUntilExpiry,
+  type JobOrderRow,
+} from "@/lib/job-orders";
+import { jobOrders as mockJobOrders } from "@/lib/mock-data";
 
-export default function JobOrdersPage() {
-  const [q, setQ] = React.useState("");
-  const [occ, setOcc] = React.useState("all");
-  const [level, setLevel] = React.useState("all");
-  const [state, setState] = React.useState("all");
-  const [verified, setVerified] = React.useState("all");
+import { MockJobOrdersList } from "./mock-list";
 
-  const occupations = Array.from(new Set(jobOrders.map((j) => j.occupation)));
-  const states = Array.from(new Set(jobOrders.map((j) => j.state)));
+type DbJob = JobOrderRow & {
+  organization: { brand_name: string; slug: string | null } | null;
+};
 
-  const filtered = jobOrders.filter(
-    (j) =>
-      (q === "" ||
-        j.title.toLowerCase().includes(q.toLowerCase()) ||
-        j.company_name.toLowerCase().includes(q.toLowerCase())) &&
-      (occ === "all" || j.occupation === occ) &&
-      (level === "all" || j.german_level_required === level) &&
-      (state === "all" || j.state === state) &&
-      (verified === "all" || j.verification_status === verified),
-  );
+export default async function JobOrdersPage() {
+  const dbJobs: DbJob[] = [];
+  if (isSupabaseConfigured()) {
+    const supabase = createSupabaseAdminClient();
+    const { data } = await supabase
+      .from("job_orders")
+      .select(
+        `id, organization_id, created_by, slug, title, occupation, germany_city, germany_state, training_type, german_level_required, education_required, start_date, interview_date, monthly_training_allowance, accommodation_support, fee_disclosure, application_deadline, expires_at, verification_status, status, last_verified_at, last_updated_by_org_at, is_sponsored, created_at, updated_at, deleted_at,
+         organization:organizations!job_orders_organization_id_fkey(brand_name, slug)`
+      )
+      .in("status", ACTIVE_JOB_ORDER_STATUSES as unknown as string[])
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    dbJobs.push(...(((data ?? []) as unknown) as DbJob[]));
+  }
 
   return (
-    <div className="container py-8 space-y-6">
+    <div className="container py-8 space-y-8">
       <header className="space-y-2">
         <Badge>Job Orders</Badge>
         <h1 className="text-3xl md:text-4xl font-black tracking-tight">
           Đơn tuyển <span className="text-gradient">Ausbildung</span> tại Đức
         </h1>
         <p className="text-sm text-muted-foreground max-w-2xl">
-          {jobOrders.length} đơn tuyển đang mở từ doanh nghiệp Đức xác minh.
+          {dbJobs.length} đơn tuyển có cấu trúc đang mở từ doanh nghiệp đã
+          xác minh trên Ausbildung Hub Vietnam, kèm{" "}
+          {mockJobOrders.length} đơn mẫu để minh hoạ.
         </p>
       </header>
 
-      <Card>
-        <CardContent className="grid gap-3 p-4 md:grid-cols-12">
-          <div className="relative md:col-span-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Tìm công việc, công ty..."
-              className="pl-9"
-            />
-          </div>
-          <Select value={occ} onChange={(e) => setOcc(e.target.value)} className="md:col-span-2">
-            <option value="all">Tất cả nghề</option>
-            {occupations.map((o) => (
-              <option key={o}>{o}</option>
-            ))}
-          </Select>
-          <Select value={level} onChange={(e) => setLevel(e.target.value)} className="md:col-span-2">
-            <option value="all">Tiếng Đức</option>
-            <option>A2</option>
-            <option>B1</option>
-            <option>B2</option>
-          </Select>
-          <Select value={state} onChange={(e) => setState(e.target.value)} className="md:col-span-2">
-            <option value="all">Bang Đức</option>
-            {states.map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </Select>
-          <Select value={verified} onChange={(e) => setVerified(e.target.value)} className="md:col-span-2">
-            <option value="all">Mọi xác minh</option>
-            <option value="verified">Verified</option>
-            <option value="pending">Đang chờ</option>
-          </Select>
-        </CardContent>
-      </Card>
+      {dbJobs.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">
+              Đơn tuyển đã được kiểm duyệt
+            </CardTitle>
+            <CardDescription>
+              Chỉ những đơn ở trạng thái <strong>Đã đăng</strong> hoặc{" "}
+              <strong>Sắp hết hạn</strong> mới hiển thị tại đây. Đơn quá hạn,
+              tạm ẩn hoặc đang chờ xét duyệt được tự động ẩn khỏi danh sách.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="grid gap-3 md:grid-cols-2">
+              {dbJobs.map((j) => {
+                const days = jobOrderDaysUntilExpiry(j);
+                return (
+                  <li
+                    key={j.id}
+                    className="rounded-xl border border-border/40 p-4"
+                  >
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <Badge
+                        variant={
+                          j.status === "closing_soon" ? "warning" : "success"
+                        }
+                      >
+                        {JOB_ORDER_STATUS_LABEL_VI[j.status]}
+                      </Badge>
+                      <Badge variant="outline">
+                        {
+                          JOB_ORDER_VERIFICATION_STATUS_LABEL_VI[
+                            j.verification_status
+                          ]
+                        }
+                      </Badge>
+                    </div>
+                    <h3 className="mt-2 text-base font-semibold">
+                      {j.slug ? (
+                        <Link
+                          href={`/jobs/${j.slug}`}
+                          className="hover:underline"
+                        >
+                          {j.title}
+                        </Link>
+                      ) : (
+                        j.title
+                      )}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      {j.organization?.brand_name ?? "—"} · {j.occupation}
+                      {j.germany_city ? ` · ${j.germany_city}` : ""}
+                      {j.germany_state ? `, ${j.germany_state}` : ""}
+                    </p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Hạn nộp:{" "}
+                      {j.application_deadline
+                        ? new Date(j.application_deadline).toLocaleDateString(
+                            "vi-VN"
+                          )
+                        : "—"}
+                      {" · "}
+                      {days !== null ? (
+                        <span
+                          className={
+                            days <= 7
+                              ? "text-amber-600 dark:text-amber-300"
+                              : "text-muted-foreground"
+                          }
+                        >
+                          Còn {days} ngày tới hạn đơn
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Cập nhật lần cuối:{" "}
+                      {j.last_updated_by_org_at
+                        ? new Date(
+                            j.last_updated_by_org_at
+                          ).toLocaleDateString("vi-VN")
+                        : new Date(j.updated_at).toLocaleDateString("vi-VN")}
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {filtered.map((j) => (
-          <JobCard key={j.id} job={j} />
-        ))}
-      </div>
+      <MockJobOrdersList />
     </div>
   );
 }
