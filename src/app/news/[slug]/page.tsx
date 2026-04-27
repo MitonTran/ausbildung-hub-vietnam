@@ -6,6 +6,7 @@ import { categoryColor } from "@/lib/badge-colors";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { NewsCard } from "@/components/cards/news-card";
+import { ReportTarget } from "@/components/report-target";
 import { articles, findArticle } from "@/lib/mock-data";
 import { formatDate } from "@/lib/utils";
 
@@ -23,11 +24,19 @@ export default function ArticleDetailPage({ params }: { params: { slug: string }
 
   return (
     <div className="container py-8">
-      <Button asChild variant="ghost" size="sm" className="mb-4">
-        <Link href="/news">
-          <ArrowLeft className="h-4 w-4" /> Quay lại News Hub
-        </Link>
-      </Button>
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/news">
+            <ArrowLeft className="h-4 w-4" /> Quay lại News Hub
+          </Link>
+        </Button>
+        <ReportTarget
+          targetType="article"
+          targetId={article.id}
+          targetLabel={article.title}
+          variant="ghost"
+        />
+      </div>
 
       <article className="mx-auto max-w-3xl space-y-6">
         <header className="space-y-3">
