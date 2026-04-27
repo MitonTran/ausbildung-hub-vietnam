@@ -170,7 +170,17 @@ export async function rejectVerificationAction(formData: FormData) {
 
   const verification = await loadVerification(id);
   if (!verification) return;
-  if (verification.status === "rejected") return;
+  // Only an open request (pending or need_more_info) can be rejected.
+  // Rejecting an already-approved row would leave the profile badge
+  // intact while the verification row claims it was rejected, and
+  // would block expireOrRevokeVerificationAction (which requires
+  // status === 'approved') from ever clearing the badge.
+  if (
+    verification.status !== "pending" &&
+    verification.status !== "need_more_info"
+  ) {
+    return;
+  }
 
   const reviewedAt = new Date();
   const supabase = createSupabaseAdminClient();
@@ -216,6 +226,17 @@ export async function requestMoreInfoAction(formData: FormData) {
 
   const verification = await loadVerification(id);
   if (!verification) return;
+  // Mirrors rejectVerificationAction: only an open request can be
+  // bumped back to need_more_info. Allowing this on approved /
+  // expired / revoked rows would desync the verification row from
+  // the profile badge and leave the badge un-revocable through
+  // normal admin flows.
+  if (
+    verification.status !== "pending" &&
+    verification.status !== "need_more_info"
+  ) {
+    return;
+  }
 
   const supabase = createSupabaseAdminClient();
   const { error } = await supabase
