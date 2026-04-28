@@ -18,8 +18,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { CenterCard } from "@/components/cards/center-card";
 import { OrganizationVerificationBadge } from "@/components/organization-verification-badge";
+import { ContentTypeBadge } from "@/components/content-type-badge";
 import { ReportTarget } from "@/components/report-target";
 import { ReviewSection } from "@/components/review-section";
+import {
+  CONTENT_TYPE_DESCRIPTION_VI,
+  CONTENT_TYPE_LABEL_VI,
+  isSponsoredContent,
+} from "@/lib/content-types";
 import {
   centers,
   findCenter,
@@ -109,14 +115,25 @@ export default async function CenterDetailPage({
                 <Badge variant="verified">Đã xác minh</Badge>
               ) : null}
               {/*
-                If this listing is a paid placement, render a clearly
-                distinct "Tài trợ" chip — separated from the
-                verification badge per /docs/trust-engine.md §3.4.
-                The mock Center type carries no sponsorship signal, so
-                the chip is currently only emitted on /companies/[slug]
-                where Company.is_featured exists.
+                Public content classification — always rendered so
+                visitors can tell apart partner-supplied profiles
+                from paid sponsored placements. Strictly separate
+                from the verification badge above per
+                /docs/trust-engine.md §3.4.
               */}
+              <ContentTypeBadge
+                contentType={center.content_type ?? "partner_content"}
+              />
             </div>
+            {isSponsoredContent(center.content_type) ? (
+              <p
+                className="rounded-md border border-amber-500/40 bg-amber-400/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200"
+                role="note"
+              >
+                <strong>{CONTENT_TYPE_LABEL_VI.sponsored}:</strong>{" "}
+                {CONTENT_TYPE_DESCRIPTION_VI.sponsored}
+              </p>
+            ) : null}
             {dbOrg?.last_verified_at ? (
               <p className="text-xs text-muted-foreground">
                 Lần xác minh gần nhất:{" "}

@@ -6,8 +6,15 @@ import { categoryColor } from "@/lib/badge-colors";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { NewsCard } from "@/components/cards/news-card";
+import { ContentTypeBadge } from "@/components/content-type-badge";
 import { ReportTarget } from "@/components/report-target";
 import { articles, findArticle } from "@/lib/mock-data";
+import {
+  CONTENT_TYPE_DESCRIPTION_VI,
+  CONTENT_TYPE_LABEL_VI,
+  isContentType,
+  isSponsoredContent,
+} from "@/lib/content-types";
 import { formatDate } from "@/lib/utils";
 
 export function generateStaticParams() {
@@ -40,14 +47,29 @@ export default function ArticleDetailPage({ params }: { params: { slug: string }
 
       <article className="mx-auto max-w-3xl space-y-6">
         <header className="space-y-3">
-          <Badge
-            variant="default"
-            className={
-              article.is_sponsored ? categoryColor("Tài trợ") : categoryColor(article.category)
-            }
-          >
-            {article.is_sponsored ? "Tài trợ" : article.category}
-          </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <ContentTypeBadge
+              contentType={
+                isContentType(article.content_type)
+                  ? article.content_type
+                  : article.is_sponsored
+                    ? "sponsored"
+                    : "editorial"
+              }
+            />
+            <Badge variant="default" className={categoryColor(article.category)}>
+              {article.category}
+            </Badge>
+          </div>
+          {isSponsoredContent(article.content_type) ? (
+            <p
+              className="rounded-md border border-amber-500/40 bg-amber-400/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200"
+              role="note"
+            >
+              <strong>{CONTENT_TYPE_LABEL_VI.sponsored}:</strong>{" "}
+              {CONTENT_TYPE_DESCRIPTION_VI.sponsored}
+            </p>
+          ) : null}
           <h1 className="text-3xl md:text-4xl font-black leading-tight tracking-tight">
             {article.title}
           </h1>

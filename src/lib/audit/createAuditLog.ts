@@ -99,6 +99,16 @@ export const AUDIT_ACTIONS = {
   JOB_ORDER_SUSPENDED: "job_order_suspended",
 
   AI_SUGGESTION_APPLIED: "ai_suggestion_accepted",
+
+  // Sponsored / editorial labeling (see
+  // /docs/admin-moderation-flow.md §9 and /docs/audit-log-rules.md §5.9).
+  // Every change to content_type / sponsorship / featured-listing
+  // status on an article, organization, or job order MUST write one
+  // of these actions so we can prove the platform decision trail.
+  SPONSORED_CONTENT_SUBMITTED: "sponsored_content_submitted",
+  SPONSORED_CONTENT_APPROVED: "sponsored_content_approved",
+  SPONSORED_CONTENT_REJECTED: "sponsored_content_rejected",
+  SPONSORED_CONTENT_LABEL_UPDATED: "sponsored_content_label_updated",
 } as const;
 
 export type AuditAction =

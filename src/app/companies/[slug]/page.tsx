@@ -18,9 +18,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { OrganizationVerificationBadge } from "@/components/organization-verification-badge";
+import { ContentTypeBadge } from "@/components/content-type-badge";
 import { ReportTarget } from "@/components/report-target";
 import { ReviewSection } from "@/components/review-section";
 import { companies, findCompany, jobOrders } from "@/lib/mock-data";
+import {
+  CONTENT_TYPE_DESCRIPTION_VI,
+  CONTENT_TYPE_LABEL_VI,
+  isSponsoredContent,
+} from "@/lib/content-types";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { ORG_TYPE_LABEL_VI, type OrganizationRow, type OrgType } from "@/lib/organization";
@@ -61,7 +67,14 @@ export default async function CompanyDetailPage({
   const featuredJobs = jobOrders.filter(
     (j) => j.company_id === company.id && j.is_featured
   );
-  const isSponsored = featuredJobs.length > 0;
+  // Pick the most authoritative content_type for the org-profile
+  // highlight: explicit company.content_type wins, otherwise we infer
+  // sponsored from any featured paid job, otherwise default to the
+  // partner_content label that all org-supplied profiles use.
+  const orgContentType =
+    company.content_type ??
+    (featuredJobs.length > 0 ? "sponsored" : "partner_content");
+  const isSponsored = isSponsoredContent(orgContentType);
   const myJobs = jobOrders.filter((j) => j.company_id === company.id);
 
   return (
@@ -108,10 +121,23 @@ export default async function CompanyDetailPage({
                 Sponsored / featured = paid signal. Always rendered as
                 a *separate* badge from the verification badge.
               */}
-              {isSponsored ? (
-                <Badge variant="sponsored">Tài trợ</Badge>
-              ) : null}
+              {/*
+                ContentTypeBadge always renders the public Vietnamese
+                label (Nội dung tài trợ / Nội dung từ đối tác / etc.)
+                so visitors can never confuse a paid placement with a
+                verified-trust signal.
+              */}
+              <ContentTypeBadge contentType={orgContentType} />
             </div>
+            {isSponsored ? (
+              <p
+                className="rounded-md border border-amber-500/40 bg-amber-400/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200"
+                role="note"
+              >
+                <strong>{CONTENT_TYPE_LABEL_VI.sponsored}:</strong>{" "}
+                {CONTENT_TYPE_DESCRIPTION_VI.sponsored}
+              </p>
+            ) : null}
             <p className="text-sm text-muted-foreground">
               {dbOrg
                 ? ORG_TYPE_LABEL_VI[dbOrg.org_type as OrgType] ?? dbOrg.org_type
@@ -190,9 +216,10 @@ export default async function CompanyDetailPage({
                       {j.city}, {j.state} · {j.training_type}
                     </span>
                     {j.is_featured ? (
-                      <Badge variant="sponsored" className="ml-auto">
-                        Tài trợ
-                      </Badge>
+                      <ContentTypeBadge
+                        contentType="sponsored"
+                        className="ml-auto"
+                      />
                     ) : null}
                   </Link>
                 </li>

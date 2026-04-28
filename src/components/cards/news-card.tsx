@@ -2,11 +2,15 @@ import Link from "next/link";
 import { Clock, Eye, MessageCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { ContentTypeBadge } from "@/components/content-type-badge";
 import type { Article } from "@/types";
 import { relativeTime } from "@/lib/utils";
 import { categoryColor } from "@/lib/badge-colors";
+import { isSponsoredContent } from "@/lib/content-types";
 
 export function NewsCard({ article, compact = false }: { article: Article; compact?: boolean }) {
+  const contentType = article.content_type ?? (article.is_sponsored ? "sponsored" : "editorial");
+  const sponsored = isSponsoredContent(contentType);
   return (
     <Link href={`/news/${article.slug}`}>
       <Card className="group overflow-hidden transition-all hover:border-primary/50">
@@ -24,17 +28,16 @@ export function NewsCard({ article, compact = false }: { article: Article; compa
               alt={article.title}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
-            <div className="absolute left-2 top-2 flex gap-1.5">
-              <Badge
-                variant="default"
-                className={
-                  article.is_sponsored
-                    ? categoryColor("Tài trợ")
-                    : categoryColor(article.category)
-                }
-              >
-                {article.is_sponsored ? "Tài trợ" : article.category}
-              </Badge>
+            <div className="absolute left-2 top-2 flex flex-wrap gap-1.5">
+              <ContentTypeBadge contentType={contentType} />
+              {!sponsored && (
+                <Badge
+                  variant="default"
+                  className={categoryColor(article.category)}
+                >
+                  {article.category}
+                </Badge>
+              )}
             </div>
           </div>
           <div className={compact ? "flex-1 py-3 pr-3" : "p-4"}>
