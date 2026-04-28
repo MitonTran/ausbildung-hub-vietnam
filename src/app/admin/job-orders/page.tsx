@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { AdminPagination } from "@/components/admin-pagination";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -18,6 +19,8 @@ import {
 export const metadata = {
   title: "Quản lý đơn tuyển — Admin",
 };
+
+const PAGE_SIZE = 50;
 
 const STATUS_VARIANT: Record<
   JobOrderStatus,
@@ -49,7 +52,7 @@ type Row = {
 export default async function AdminJobOrdersPage({
   searchParams,
 }: {
-  searchParams?: { status?: string };
+  searchParams?: { status?: string; page?: string };
 }) {
   const requested = searchParams?.status ?? "pending_verification";
   const filter = (
@@ -57,20 +60,24 @@ export default async function AdminJobOrdersPage({
   ).includes(requested)
     ? (requested as JobOrderStatus)
     : "pending_verification";
+  const pageNum = Math.max(1, Number(searchParams?.page ?? "1") || 1);
 
   const supabase = createSupabaseAdminClient();
-  const { data: rows } = await supabase
+  const offset = (pageNum - 1) * PAGE_SIZE;
+  const { data: rows, count } = await supabase
     .from("job_orders")
     .select(
       `id, title, occupation, germany_city, status, application_deadline, expires_at, created_at,
-       organization:organizations!job_orders_organization_id_fkey(brand_name)`
+       organization:organizations!job_orders_organization_id_fkey(brand_name)`,
+      { count: "exact" }
     )
     .eq("status", filter)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
-    .limit(200);
+    .range(offset, offset + PAGE_SIZE - 1);
 
   const list = (rows ?? []) as unknown as Row[];
+  const totalCount = count ?? 0;
 
   return (
     <div className="container max-w-5xl space-y-6 py-10">
@@ -108,7 +115,9 @@ export default async function AdminJobOrdersPage({
           <CardTitle className="text-lg">
             {JOB_ORDER_STATUS_LABEL_VI[filter]}
           </CardTitle>
-          <CardDescription>{list.length} đơn</CardDescription>
+          <CardDescription>
+            {totalCount} đơn (đang xem {list.length})
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {list.length === 0 ? (
@@ -164,6 +173,13 @@ export default async function AdminJobOrdersPage({
               ))}
             </ul>
           )}
+          <AdminPagination
+            basePath="/admin/job-orders"
+            pageNum={pageNum}
+            pageSize={PAGE_SIZE}
+            totalCount={totalCount}
+            params={{ status: filter }}
+          />
         </CardContent>
       </Card>
     </div>

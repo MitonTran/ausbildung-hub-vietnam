@@ -62,6 +62,10 @@ type DbJob = JobOrderRow & {
 async function loadDbJob(slug: string): Promise<DbJob | null> {
   if (!isSupabaseConfigured()) return null;
   const supabase = createSupabaseAdminClient();
+  // Public listing load: only `published` / `closing_soon` job orders
+  // are exposed. Drafts, pending_verification, under_review, rejected,
+  // suspended, expired, filled and soft-deleted rows are hidden,
+  // matching the public RLS policy in /docs/rls-policy.md §8.
   const { data } = await supabase
     .from("job_orders")
     .select(
@@ -69,6 +73,7 @@ async function loadDbJob(slug: string): Promise<DbJob | null> {
        organization:organizations!job_orders_organization_id_fkey(id, brand_name, slug, org_type)`
     )
     .eq("slug", slug)
+    .in("status", ACTIVE_JOB_ORDER_STATUSES as unknown as string[])
     .is("deleted_at", null)
     .maybeSingle();
   return ((data ?? null) as unknown) as DbJob | null;

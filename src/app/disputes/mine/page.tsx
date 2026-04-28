@@ -44,10 +44,15 @@ export default async function MyDisputesPage() {
   }
 
   const supabase = createSupabaseAdminClient();
+  // Defense-in-depth: even though only the user's own disputes are
+  // returned (opened_by = profile.id), `internal_note` is moderator-
+  // only per /docs/audit-log-rules.md §8 and must never appear in a
+  // user-facing payload. We project it out at the SELECT layer so a
+  // future render change cannot accidentally leak it.
   const { data, error } = await supabase
     .from("dispute_cases")
     .select(
-      "id,opened_by,target_type,target_id,dispute_type,summary,evidence_file_paths,status,assigned_to,resolution,resolved_by,resolved_at,internal_note,created_at,updated_at"
+      "id,opened_by,target_type,target_id,dispute_type,summary,evidence_file_paths,status,assigned_to,resolution,resolved_by,resolved_at,created_at,updated_at"
     )
     .eq("opened_by", profile.id)
     .order("created_at", { ascending: false });
@@ -56,7 +61,7 @@ export default async function MyDisputesPage() {
     console.error("[disputes/mine]", error);
   }
 
-  const disputes = (data ?? []) as DisputeCaseRow[];
+  const disputes = (data ?? []) as Omit<DisputeCaseRow, "internal_note">[];
 
   return (
     <div className="container max-w-3xl py-10">

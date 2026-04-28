@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { AdminPagination } from "@/components/admin-pagination";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -20,6 +21,8 @@ import {
 export const metadata = {
   title: "Quản lý đánh giá — Admin",
 };
+
+const PAGE_SIZE = 50;
 
 const STATUS_VARIANT: Record<
   ReviewModerationStatus,
@@ -52,7 +55,7 @@ type ReviewListRow = {
 export default async function AdminReviewsPage({
   searchParams,
 }: {
-  searchParams?: { status?: string };
+  searchParams?: { status?: string; page?: string };
 }) {
   const requestedStatus = searchParams?.status ?? "pending";
   const filterStatus = (
@@ -60,20 +63,24 @@ export default async function AdminReviewsPage({
   ).includes(requestedStatus)
     ? (requestedStatus as ReviewModerationStatus)
     : "pending";
+  const pageNum = Math.max(1, Number(searchParams?.page ?? "1") || 1);
 
   const supabase = createSupabaseAdminClient();
-  const { data: rows } = await supabase
+  const offset = (pageNum - 1) * PAGE_SIZE;
+  const { data: rows, count } = await supabase
     .from("reviews")
     .select(
       `id, reviewer_id, target_type, target_id, review_type, relationship_to_target, rating, title, moderation_status, created_at,
-       reviewer:profiles!reviews_reviewer_id_fkey(id, full_name, email)`
+       reviewer:profiles!reviews_reviewer_id_fkey(id, full_name, email)`,
+      { count: "exact" }
     )
     .eq("moderation_status", filterStatus)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
-    .limit(200);
+    .range(offset, offset + PAGE_SIZE - 1);
 
   const list = (rows ?? []) as unknown as ReviewListRow[];
+  const totalCount = count ?? 0;
 
   return (
     <div className="container max-w-5xl space-y-6 py-10">
@@ -111,7 +118,9 @@ export default async function AdminReviewsPage({
           <CardTitle className="text-lg">
             {REVIEW_MODERATION_STATUS_LABEL_VI[filterStatus]}
           </CardTitle>
-          <CardDescription>{list.length} đánh giá</CardDescription>
+          <CardDescription>
+            {totalCount} đánh giá (đang xem {list.length})
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {list.length === 0 ? (
@@ -159,6 +168,13 @@ export default async function AdminReviewsPage({
               ))}
             </ul>
           )}
+          <AdminPagination
+            basePath="/admin/reviews"
+            pageNum={pageNum}
+            pageSize={PAGE_SIZE}
+            totalCount={totalCount}
+            params={{ status: filterStatus }}
+          />
         </CardContent>
       </Card>
     </div>

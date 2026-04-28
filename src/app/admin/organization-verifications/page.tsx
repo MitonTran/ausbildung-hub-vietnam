@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { AdminPagination } from "@/components/admin-pagination";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -20,6 +21,8 @@ import {
 export const metadata = {
   title: "Xác minh tổ chức — Admin",
 };
+
+const PAGE_SIZE = 50;
 
 const STATUS_VARIANT: Record<
   OrgVerificationRequestStatus,
@@ -59,7 +62,7 @@ type OrgVerificationListRow = {
 export default async function AdminOrgVerificationsPage({
   searchParams,
 }: {
-  searchParams?: { status?: string };
+  searchParams?: { status?: string; page?: string };
 }) {
   const requestedStatus = searchParams?.status ?? "pending";
   const filterStatus = (
@@ -67,11 +70,14 @@ export default async function AdminOrgVerificationsPage({
   ).includes(requestedStatus)
     ? (requestedStatus as OrgVerificationRequestStatus)
     : "pending";
+  const pageNum = Math.max(1, Number(searchParams?.page ?? "1") || 1);
 
   // Service role: admins always read the full queue. The /admin layout
-  // already gates on isAdminRole().
+  // already gates on isAdminRole(). Pagination is required so older
+  // items do not silently fall off a fixed `.limit()`.
   const supabase = createSupabaseAdminClient();
-  const { data: rows } = await supabase
+  const offset = (pageNum - 1) * PAGE_SIZE;
+  const { data: rows, count } = await supabase
     .from("organization_verifications")
     .select(
       `id, organization_id, requested_status, status, document_file_paths, created_at, reviewed_at,
@@ -80,13 +86,15 @@ export default async function AdminOrgVerificationsPage({
        ),
        submitter:profiles!organization_verifications_submitted_by_fkey(
          id, full_name, email
-       )`
+       )`,
+      { count: "exact" }
     )
     .eq("status", filterStatus)
     .order("created_at", { ascending: false })
-    .limit(200);
+    .range(offset, offset + PAGE_SIZE - 1);
 
   const list = (rows ?? []) as unknown as OrgVerificationListRow[];
+  const totalCount = count ?? 0;
 
   return (
     <div className="container max-w-5xl space-y-6 py-10">
@@ -125,7 +133,9 @@ export default async function AdminOrgVerificationsPage({
           <CardTitle className="text-lg">
             {ORG_VERIFICATION_REQUEST_STATUS_LABEL_VI[filterStatus]}
           </CardTitle>
-          <CardDescription>{list.length} yêu cầu</CardDescription>
+          <CardDescription>
+            {totalCount} yêu cầu (đang xem {list.length})
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {list.length === 0 ? (
@@ -172,6 +182,13 @@ export default async function AdminOrgVerificationsPage({
               ))}
             </ul>
           )}
+          <AdminPagination
+            basePath="/admin/organization-verifications"
+            pageNum={pageNum}
+            pageSize={PAGE_SIZE}
+            totalCount={totalCount}
+            params={{ status: filterStatus }}
+          />
         </CardContent>
       </Card>
     </div>
