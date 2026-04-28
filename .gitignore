@@ -33,3 +33,6 @@ pnpm-debug.log*
 
 # Vercel
 .vercel
+
+# Local AI agent config
+.agent/
