@@ -236,6 +236,18 @@ export type OrganizationRow = {
   updated_at: string;
 };
 
+/**
+ * Public-safe projection of OrganizationRow used by visitor-facing
+ * pages (`/centers/[slug]`, `/companies/[slug]`). Drops admin-only
+ * signals — currently `risk_score` — that must never be exposed to
+ * the public payload, even server-side, per /docs/audit-log-rules.md
+ * §8 ("internal trust signals must not be visible to normal users").
+ *
+ * Pages that need the full row (admin queues, org-member dashboards
+ * for their own org) keep using `OrganizationRow`.
+ */
+export type PublicOrganizationRow = Omit<OrganizationRow, "risk_score">;
+
 export type OrganizationVerificationRow = {
   id: string;
   organization_id: string;

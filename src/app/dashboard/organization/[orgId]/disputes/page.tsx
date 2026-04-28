@@ -75,32 +75,38 @@ export default async function OrganizationDisputesPage({
     .eq("organization_id", params.orgId);
   const jobIds = (jobRows ?? []).map((r) => r.id as string);
 
+  // `internal_note` is moderator-only per /docs/audit-log-rules.md
+  // §8 and must never appear in an org-facing payload. We project it
+  // out at the SELECT layer so a future render change cannot
+  // accidentally leak it. Same for both branches below.
+  type OrgDisputeRow = Omit<DisputeCaseRow, "internal_note">;
+
   // ---- 1. organization-targeted disputes ----
   const { data: orgDisputeRows } = await admin
     .from("dispute_cases")
     .select(
-      "id,opened_by,target_type,target_id,dispute_type,summary,evidence_file_paths,status,assigned_to,resolution,resolved_by,resolved_at,internal_note,created_at,updated_at"
+      "id,opened_by,target_type,target_id,dispute_type,summary,evidence_file_paths,status,assigned_to,resolution,resolved_by,resolved_at,created_at,updated_at"
     )
     .eq("target_type", "organization")
     .eq("target_id", params.orgId)
     .order("created_at", { ascending: false });
 
   // ---- 2. job_order-targeted disputes (only this org's jobs) ----
-  let jobDisputeRows: DisputeCaseRow[] = [];
+  let jobDisputeRows: OrgDisputeRow[] = [];
   if (jobIds.length > 0) {
     const { data } = await admin
       .from("dispute_cases")
       .select(
-        "id,opened_by,target_type,target_id,dispute_type,summary,evidence_file_paths,status,assigned_to,resolution,resolved_by,resolved_at,internal_note,created_at,updated_at"
+        "id,opened_by,target_type,target_id,dispute_type,summary,evidence_file_paths,status,assigned_to,resolution,resolved_by,resolved_at,created_at,updated_at"
       )
       .eq("target_type", "job_order")
       .in("target_id", jobIds)
       .order("created_at", { ascending: false });
-    jobDisputeRows = (data ?? []) as DisputeCaseRow[];
+    jobDisputeRows = (data ?? []) as OrgDisputeRow[];
   }
 
-  const disputes: DisputeCaseRow[] = [
-    ...((orgDisputeRows ?? []) as DisputeCaseRow[]),
+  const disputes: OrgDisputeRow[] = [
+    ...((orgDisputeRows ?? []) as OrgDisputeRow[]),
     ...jobDisputeRows,
   ].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 

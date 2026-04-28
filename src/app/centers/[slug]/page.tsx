@@ -37,24 +37,34 @@ import { formatDate, formatVnd } from "@/lib/utils";
 import { levelColor } from "@/lib/badge-colors";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import type { OrganizationRow } from "@/lib/organization";
+import type { PublicOrganizationRow } from "@/lib/organization";
 
 export function generateStaticParams() {
   return centers.map((c) => ({ slug: c.slug }));
 }
 
-async function loadOrgBySlug(slug: string): Promise<OrganizationRow | null> {
+async function loadOrgBySlug(
+  slug: string
+): Promise<PublicOrganizationRow | null> {
   if (!isSupabaseConfigured()) return null;
   const supabase = createSupabaseAdminClient();
+  // Public profile load: hides drafts, suspended orgs, and soft-deleted
+  // rows. We use the service-role client (bypasses RLS) so the same
+  // filter that the public RLS policy in /docs/rls-policy.md §4 would
+  // enforce is replicated explicitly here. `risk_score` is intentionally
+  // NOT selected — it is admin-only per /docs/audit-log-rules.md §8.
   const { data } = await supabase
     .from("organizations")
     .select(
-      "id, org_type, legal_name, brand_name, slug, country, city, address, website_url, contact_email, contact_phone, description, services, verification_status, trust_badge, last_verified_at, verification_expires_at, last_updated_by_org_at, risk_score, is_published, is_suspended, created_at, updated_at"
+      "id, org_type, legal_name, brand_name, slug, country, city, address, website_url, contact_email, contact_phone, description, services, verification_status, trust_badge, last_verified_at, verification_expires_at, last_updated_by_org_at, is_published, is_suspended, created_at, updated_at"
     )
     .eq("slug", slug)
     .eq("org_type", "training_center")
+    .eq("is_published", true)
+    .eq("is_suspended", false)
+    .is("deleted_at", null)
     .maybeSingle();
-  return (data as OrganizationRow | null) ?? null;
+  return (data as PublicOrganizationRow | null) ?? null;
 }
 
 export default async function CenterDetailPage({

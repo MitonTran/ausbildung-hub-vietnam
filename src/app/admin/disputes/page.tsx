@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { AdminPagination } from "@/components/admin-pagination";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -28,6 +29,8 @@ export const metadata = {
   title: "Khiếu nại (Disputes) — Admin",
 };
 
+const PAGE_SIZE = 50;
+
 const STATUS_VARIANT: Record<
   DisputeStatus,
   "default" | "success" | "warning" | "destructive" | "outline"
@@ -48,6 +51,7 @@ export default async function AdminDisputesPage({
     status?: string;
     target_type?: string;
     dispute_type?: string;
+    page?: string;
   };
 }) {
   const requestedStatus = searchParams?.status ?? "open";
@@ -73,15 +77,19 @@ export default async function AdminDisputesPage({
       ? (requestedDisputeType as DisputeType)
       : "all";
 
+  const pageNum = Math.max(1, Number(searchParams?.page ?? "1") || 1);
+
   const supabase = createSupabaseAdminClient();
+  const offset = (pageNum - 1) * PAGE_SIZE;
   let query = supabase
     .from("dispute_cases")
     .select(
-      "id,opened_by,target_type,target_id,dispute_type,summary,evidence_file_paths,status,assigned_to,resolution,resolved_by,resolved_at,internal_note,created_at,updated_at"
+      "id,opened_by,target_type,target_id,dispute_type,summary,evidence_file_paths,status,assigned_to,resolution,resolved_by,resolved_at,internal_note,created_at,updated_at",
+      { count: "exact" }
     )
     .eq("status", filterStatus)
     .order("created_at", { ascending: false })
-    .limit(200);
+    .range(offset, offset + PAGE_SIZE - 1);
 
   if (filterTargetType !== "all") {
     query = query.eq("target_type", filterTargetType);
@@ -90,11 +98,12 @@ export default async function AdminDisputesPage({
     query = query.eq("dispute_type", filterDisputeType);
   }
 
-  const { data, error } = await query;
+  const { data, error, count } = await query;
   if (error) {
     console.error("[admin/disputes]", error);
   }
   const disputes = (data ?? []) as DisputeCaseRow[];
+  const totalCount = count ?? 0;
 
   return (
     <div className="container max-w-5xl space-y-6 py-10">
@@ -178,6 +187,10 @@ export default async function AdminDisputesPage({
         </CardContent>
       </Card>
 
+      <p className="text-xs text-muted-foreground">
+        {totalCount} vụ việc (đang xem {disputes.length})
+      </p>
+
       {disputes.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
@@ -237,6 +250,20 @@ export default async function AdminDisputesPage({
           ))}
         </div>
       )}
+
+      <AdminPagination
+        basePath="/admin/disputes"
+        pageNum={pageNum}
+        pageSize={PAGE_SIZE}
+        totalCount={totalCount}
+        params={{
+          status: filterStatus,
+          target_type:
+            filterTargetType !== "all" ? filterTargetType : undefined,
+          dispute_type:
+            filterDisputeType !== "all" ? filterDisputeType : undefined,
+        }}
+      />
     </div>
   );
 }

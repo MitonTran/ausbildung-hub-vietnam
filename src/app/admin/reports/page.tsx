@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { AdminPagination } from "@/components/admin-pagination";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -29,6 +30,8 @@ import {
 export const metadata = {
   title: "Báo cáo nội dung — Admin",
 };
+
+const PAGE_SIZE = 50;
 
 const STATUS_VARIANT: Record<
   ReportStatus,
@@ -68,7 +71,12 @@ type ReportRow = ReportFlagRow;
 export default async function AdminReportsPage({
   searchParams,
 }: {
-  searchParams?: { status?: string; severity?: string; reason?: string };
+  searchParams?: {
+    status?: string;
+    severity?: string;
+    reason?: string;
+    page?: string;
+  };
 }) {
   const requestedStatus = searchParams?.status ?? "open";
   const filterStatus: ReportStatus = (
@@ -91,15 +99,19 @@ export default async function AdminReportsPage({
       ? (requestedReason as ReportReason)
       : "all";
 
+  const pageNum = Math.max(1, Number(searchParams?.page ?? "1") || 1);
+
   const supabase = createSupabaseAdminClient();
+  const offset = (pageNum - 1) * PAGE_SIZE;
   let query = supabase
     .from("report_flags")
     .select(
-      "id,reporter_id,target_type,target_id,reason,description,evidence_file_paths,severity,status,handled_by,handled_at,outcome,internal_note,created_at,updated_at"
+      "id,reporter_id,target_type,target_id,reason,description,evidence_file_paths,severity,status,handled_by,handled_at,outcome,internal_note,created_at,updated_at",
+      { count: "exact" }
     )
     .eq("status", filterStatus)
     .order("created_at", { ascending: false })
-    .limit(200);
+    .range(offset, offset + PAGE_SIZE - 1);
 
   if (filterSeverity !== "all") {
     query = query.eq("severity", filterSeverity);
@@ -108,8 +120,9 @@ export default async function AdminReportsPage({
     query = query.eq("reason", filterReason);
   }
 
-  const { data: rows } = await query;
+  const { data: rows, count } = await query;
   const list = (rows ?? []) as ReportRow[];
+  const totalCount = count ?? 0;
 
   // Admin-only risk indicator: count distinct reports per (target_type,
   // target_id) across the whole queue (any status). Fetched in batch
@@ -195,7 +208,9 @@ export default async function AdminReportsPage({
           <CardTitle className="text-lg">
             {REPORT_STATUS_LABEL_VI[filterStatus]}
           </CardTitle>
-          <CardDescription>{list.length} báo cáo</CardDescription>
+          <CardDescription>
+            {totalCount} báo cáo (đang xem {list.length})
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {list.length === 0 ? (
@@ -269,6 +284,17 @@ export default async function AdminReportsPage({
               })}
             </ul>
           )}
+          <AdminPagination
+            basePath="/admin/reports"
+            pageNum={pageNum}
+            pageSize={PAGE_SIZE}
+            totalCount={totalCount}
+            params={{
+              status: filterStatus,
+              severity: filterSeverity !== "all" ? filterSeverity : undefined,
+              reason: filterReason !== "all" ? filterReason : undefined,
+            }}
+          />
         </CardContent>
       </Card>
     </div>
