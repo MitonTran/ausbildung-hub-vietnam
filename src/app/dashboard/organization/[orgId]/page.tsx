@@ -129,6 +129,11 @@ export default async function OrganizationDashboardDetailPage({
               Quản lý đơn tuyển
             </Link>
           </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/dashboard/organization/${org.id}/disputes`}>
+              Khiếu nại liên quan
+            </Link>
+          </Button>
         </div>
       </div>
 

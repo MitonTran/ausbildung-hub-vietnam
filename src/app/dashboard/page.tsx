@@ -6,6 +6,7 @@ import {
   Briefcase,
   ShieldCheck,
   ArrowRight,
+  Gavel,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -158,6 +159,31 @@ export default async function DashboardPage() {
                 Mở trang quản lý tổ chức
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Gavel className="h-4 w-4" />
+              Khiếu nại
+            </CardTitle>
+            <CardDescription>
+              Mở khiếu nại đối với một review, một quyết định xác minh, hoặc
+              một đơn tuyển có vấn đề. Tất cả khiếu nại đều được ghi vào nhật
+              ký kiểm toán.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button asChild variant="outline">
+              <Link href="/disputes/new">
+                Mở khiếu nại mới
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+            <Button asChild variant="ghost">
+              <Link href="/disputes/mine">Khiếu nại của tôi</Link>
             </Button>
           </CardContent>
         </Card>
