@@ -33,7 +33,7 @@ async function handle(request: Request): Promise<NextResponse> {
 
   const url = new URL(request.url);
   const provided =
-    url.searchParams.get("secret") ?? request.headers.get("x-cron-secret");
+    request.headers.get("x-cron-secret") ?? url.searchParams.get("secret");
   if (provided !== secret) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -85,10 +85,10 @@ async function handle(request: Request): Promise<NextResponse> {
   }
 
   return NextResponse.json({
-    expired: expiredIds.length,
-    closing_soon: closingIds.length,
-    expired_ids: expiredIds,
-    closing_soon_ids: closingIds,
+    success: true,
+    expiredCount: expiredIds.length,
+    closingSoonCount: closingIds.length,
+    checkedAt: new Date().toISOString(),
   });
 }
 
