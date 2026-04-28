@@ -31,6 +31,7 @@ const NAV = [
   { href: "#", label: "Trung tâm", icon: <GraduationCap className="h-4 w-4" /> },
   { href: "#", label: "Doanh nghiệp", icon: <Building2 className="h-4 w-4" /> },
   { href: "/admin/job-orders", label: "Đơn tuyển", icon: <Briefcase className="h-4 w-4" /> },
+  { href: "/admin/sponsored", label: "Nội dung tài trợ", icon: <Briefcase className="h-4 w-4" /> },
   { href: "/admin/reviews", label: "Reviews", icon: <MessagesSquare className="h-4 w-4" /> },
   { href: "#", label: "Bài cộng đồng", icon: <MessagesSquare className="h-4 w-4" /> },
   { href: "/admin/reports", label: "Báo cáo (Reports)", icon: <Flag className="h-4 w-4" /> },

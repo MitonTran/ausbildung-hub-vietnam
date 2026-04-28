@@ -2,10 +2,14 @@ import Link from "next/link";
 import { Star, MapPin, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { ContentTypeBadge } from "@/components/content-type-badge";
 import type { Center } from "@/types";
 import { levelColor } from "@/lib/badge-colors";
+import { isSponsoredContent } from "@/lib/content-types";
 
 export function CenterCard({ center }: { center: Center }) {
+  const contentType = center.content_type ?? "partner_content";
+  const sponsored = isSponsoredContent(contentType);
   return (
     <Link href={`/centers/${center.slug}`}>
       <Card className="group flex h-full flex-col p-5 transition-all hover:border-primary/50">
@@ -22,10 +26,14 @@ export function CenterCard({ center }: { center: Center }) {
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <MapPin className="h-3 w-3" /> {center.city}
               </span>
+              {/* Verified state is independent from any paid placement label below. */}
               {center.verification_status === "verified" && (
                 <Badge variant="verified">
                   <ShieldCheck className="h-3 w-3" /> Verified
                 </Badge>
+              )}
+              {(sponsored || center.is_featured) && (
+                <ContentTypeBadge contentType={contentType} />
               )}
             </div>
             <div className="mt-1.5 flex items-center gap-2">

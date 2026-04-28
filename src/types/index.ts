@@ -4,6 +4,20 @@ export type VerificationStatus = "verified" | "pending" | "unverified";
 
 export type GermanLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
 
+/**
+ * Public content classification — see /docs/trust-engine.md §9 and
+ * `src/lib/content-types.ts`. Every public-facing card / detail page
+ * that surfaces promotable content (articles, organization profile
+ * highlights, job order promotions, homepage featured sections) must
+ * render the matching Vietnamese label so visitors can distinguish
+ * editorial from paid placements.
+ */
+export type ContentType =
+  | "editorial"
+  | "sponsored"
+  | "partner_content"
+  | "user_generated";
+
 export interface Profile {
   id: string;
   full_name: string;
@@ -35,6 +49,17 @@ export interface Article {
   published_at: string;
   read_time: number;
   is_sponsored: boolean;
+  /**
+   * Canonical four-value content classification. Mirrors the
+   * `articles.content_type` column added in migration 0010. The UI
+   * prefers this over `is_sponsored` for labeling, but `is_sponsored`
+   * is kept as a back-compat shortcut so older callers still work.
+   */
+  content_type: ContentType;
+  /** Optional reference to the sponsoring organization. */
+  sponsor_organization_id?: string | null;
+  /** Whether the article is promoted to the homepage featured section. */
+  is_featured?: boolean;
   views?: number;
   comments?: number;
   tags: string[];
@@ -60,6 +85,10 @@ export interface Center {
   next_intake_date?: string;
   branches?: string[];
   highlights?: string[];
+  /** See ContentType. Org profile highlights default to partner_content. */
+  content_type?: ContentType;
+  /** Paid placement on homepage / category landing — never a trust signal. */
+  is_featured?: boolean;
 }
 
 export interface CenterReview {
@@ -110,6 +139,8 @@ export interface Company {
   rating_avg: number;
   job_count: number;
   satisfaction_rate: number;
+  content_type?: ContentType;
+  is_featured?: boolean;
 }
 
 export interface JobOrder {
@@ -136,6 +167,15 @@ export interface JobOrder {
   status: "open" | "closed" | "draft";
   verification_status: VerificationStatus;
   is_featured: boolean;
+  /**
+   * Whether the job order is a paid sponsored promotion. Mirrors
+   * `job_orders.is_sponsored`. Sponsored placement is ENTIRELY
+   * separate from `verification_status` — see
+   * /docs/trust-engine.md §3.4.
+   */
+  is_sponsored?: boolean;
+  /** Public content classification — see ContentType. */
+  content_type?: ContentType;
   created_at: string;
 }
 

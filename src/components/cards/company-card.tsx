@@ -2,9 +2,14 @@ import Link from "next/link";
 import { Briefcase, MapPin, ShieldCheck, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { ContentTypeBadge } from "@/components/content-type-badge";
 import type { Company } from "@/types";
+import { isSponsoredContent } from "@/lib/content-types";
 
 export function CompanyCard({ company }: { company: Company }) {
+  const contentType = company.content_type ?? "partner_content";
+  const showLabel =
+    isSponsoredContent(contentType) || company.is_featured === true;
   return (
     <Link href={`/companies?selected=${company.slug}`}>
       <Card className="group flex items-center gap-4 p-4 transition-all hover:border-primary/50">
@@ -13,15 +18,21 @@ export function CompanyCard({ company }: { company: Company }) {
           <img src={company.logo_url} alt={company.name} className="h-full w-full object-contain p-2" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <h3 className="truncate text-sm font-semibold group-hover:text-primary transition-colors">
               {company.name}
             </h3>
+            {/*
+              Verified is an admin-controlled trust signal. It is
+              never granted by paid placement; the ContentTypeBadge
+              below labels that surface separately.
+            */}
             {company.verification_status === "verified" && (
               <Badge variant="verified" className="shrink-0">
                 <ShieldCheck className="h-3 w-3" /> Verified
               </Badge>
             )}
+            {showLabel && <ContentTypeBadge contentType={contentType} />}
           </div>
           <div className="mt-0.5 text-xs text-muted-foreground">{company.industry}</div>
           <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">

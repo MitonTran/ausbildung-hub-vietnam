@@ -27,6 +27,11 @@ import { Select } from "@/components/ui/select";
 import { JobCard } from "@/components/cards/job-card";
 import { JobOrderReportForm } from "@/components/job-order-report-form";
 import { ReportTarget } from "@/components/report-target";
+import { ContentTypeBadge } from "@/components/content-type-badge";
+import {
+  CONTENT_TYPE_DESCRIPTION_VI,
+  CONTENT_TYPE_LABEL_VI,
+} from "@/lib/content-types";
 import {
   ACTIVE_JOB_ORDER_STATUSES,
   JOB_ORDER_STATUS_LABEL_VI,
@@ -111,17 +116,43 @@ export default async function JobDetailPage({
           <div className="flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{job.title}</h1>
+              {/*
+                Verified is the trust signal — admin-controlled and
+                independent from the sponsored / featured paid signals
+                below. /docs/trust-engine.md §3.4: paid placement must
+                NEVER grant a trust badge.
+              */}
               {job.verification_status === "verified" && (
                 <Badge variant="verified">
                   <ShieldCheck className="h-3 w-3" /> Verified
                 </Badge>
               )}
+              <ContentTypeBadge
+                contentType={
+                  job.content_type ??
+                  (job.is_sponsored ? "sponsored" : "partner_content")
+                }
+              />
+              {/*
+                "Featured" placement is the homepage promotional surface —
+                kept visually separate from the verified badge so the
+                two cannot be conflated.
+              */}
               {job.is_featured && (
                 <Badge variant="featured">
-                  <Sparkles className="h-3 w-3" /> Featured
+                  <Sparkles className="h-3 w-3" /> Nổi bật
                 </Badge>
               )}
             </div>
+            {(job.content_type === "sponsored" || job.is_sponsored) ? (
+              <p
+                className="rounded-md border border-amber-500/40 bg-amber-400/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200"
+                role="note"
+              >
+                <strong>{CONTENT_TYPE_LABEL_VI.sponsored}:</strong>{" "}
+                {CONTENT_TYPE_DESCRIPTION_VI.sponsored}
+              </p>
+            ) : null}
             <div className="text-sm text-muted-foreground">{job.company_name}</div>
             <div className="grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
               <Stat icon={<MapPin className="h-3.5 w-3.5" />} label={`${job.city}, ${job.state}`} />
@@ -276,7 +307,24 @@ async function DbJobDetail({ job }: { job: DbJob }) {
                 <AlertTriangle className="h-3 w-3" /> Đã hết hạn
               </Badge>
             ) : null}
+            {/*
+              Public content classification — orthogonal to verification.
+              `is_sponsored` is the legacy paid-promo flag; we surface
+              it as the canonical 'sponsored' content_type label.
+            */}
+            <ContentTypeBadge
+              contentType={job.is_sponsored ? "sponsored" : "partner_content"}
+            />
           </div>
+          {job.is_sponsored ? (
+            <p
+              className="rounded-md border border-amber-500/40 bg-amber-400/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200"
+              role="note"
+            >
+              <strong>{CONTENT_TYPE_LABEL_VI.sponsored}:</strong>{" "}
+              {CONTENT_TYPE_DESCRIPTION_VI.sponsored}
+            </p>
+          ) : null}
           <div className="text-sm text-muted-foreground">
             {job.organization?.brand_name ?? "—"}
           </div>
