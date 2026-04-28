@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   BarChart3,
   Settings,
+  ScrollText,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ const NAV = [
   { href: "/admin/disputes", label: "Khiếu nại (Disputes)", icon: <Gavel className="h-4 w-4" /> },
   { href: "/admin/verifications", label: "Verification (User)", icon: <ShieldCheck className="h-4 w-4" /> },
   { href: "/admin/organization-verifications", label: "Verification (Organization)", icon: <ShieldCheck className="h-4 w-4" /> },
+  { href: "/admin/audit-logs", label: "Audit logs", icon: <ScrollText className="h-4 w-4" /> },
   { href: "#", label: "Analytics", icon: <BarChart3 className="h-4 w-4" /> },
   { href: "#", label: "Cài đặt", icon: <Settings className="h-4 w-4" /> },
 ];
