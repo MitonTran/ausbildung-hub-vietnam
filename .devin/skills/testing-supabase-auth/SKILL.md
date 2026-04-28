@@ -93,6 +93,92 @@ curl -X PATCH -H "apikey: $SVC" -H "Authorization: Bearer $SVC" \
 
 Then refresh `/dashboard` in the browser — the role badge should update from `Học viên` to `Quản trị viên` and the `Mở /admin` card should appear.
 
+## Trust Engine + admin moderation testing
+
+Use this section when verifying PRs that change public org/job pages, admin moderation queues, dispute pages, or any SELECT projection that should drop a moderator-only field (`risk_score`, `internal_note`, etc.).
+
+### Mock-data gatekeeper gotcha (centers / companies)
+
+`src/app/centers/[slug]/page.tsx` and `src/app/companies/[slug]/page.tsx` call `findCenter(slug)` / `findCompany(slug)` from `src/lib/mock-data.ts` **first** and return `notFound()` if the slug isn't in mock-data. The DB load via `loadOrgBySlug` only enhances the verification badge — it never gates rendering. Implications:
+
+- Seeding a DB org with an arbitrary slug won't make the page render — it'll 404 in mock-data first.
+- To actually exercise `loadOrgBySlug` filters (`is_published`, `is_suspended`, `deleted_at IS NULL`), reuse a slug that already exists in mock-data: e.g. `goethe-hub-can-tho`, `bremen-akademie-vinh` for centers; `siemens`, `bosch`, `b-braun`, `lidl` for companies. Then patch the seeded DB row's slug to match.
+- The reverse — proving a hidden DB org is filtered — is observable via the page's header: the page uses `dbOrg?.brand_name ?? center.name`, so if `dbOrg` is correctly null the mock brand_name wins. Grep the served HTML for the DB-only brand_name; absent = filtered.
+
+The `/jobs/[slug]` route does NOT have this gate — it queries `job_orders` directly, so seeded slugs work end-to-end and the route returns 404 cleanly when `status` is non-public.
+
+### Canary-string pattern for SELECT projection fixes
+
+When verifying a fix that drops a sensitive field from a SELECT (e.g. `internal_note` removed from `/disputes/mine`), set the field to a unique sentinel string in the DB and grep for it across served bytes:
+
+```bash
+CANARY="LEAK_CANARY_$(date +%s)_$RANDOM"
+curl -s -H "apikey: $SVC" -H "Authorization: Bearer $SVC" -H "Content-Type: application/json" \
+  -X PATCH "$URL/rest/v1/dispute_cases?id=eq.<dispute-id>" \
+  -d "{\"internal_note\":\"$CANARY\"}"
+```
+
+Then grep both the SSR HTML and the RSC fetch (see Playwright section below). Pre-fix, the canary would appear inside the serialized server-component payload. Post-fix, it shouldn't appear anywhere.
+
+**Caveat — server-only fields don't distinguish.** If the field is fetched on the server but never passed to a client component, it never crosses the wire even pre-fix. (Example: `risk_score` on `/centers/[slug]` — `OrganizationVerificationBadge` is a server component, so the field was already not in the payload before the fix.) In that case, treat the test as a defense-in-depth regression check, not as e2e proof. Be honest about this in the report.
+
+### Playwright over CDP for SSR HTML + RSC payload inspection
+
+When the `computer(action="console")` action returns "Chrome is not in the foreground" (happens after window-state changes), connect to Chrome over CDP at `http://localhost:29229` instead. The browser is already authenticated — Playwright reuses the existing context.
+
+```python
+from playwright.sync_api import sync_playwright
+with sync_playwright() as p:
+    browser = p.chromium.connect_over_cdp("http://localhost:29229")
+    ctx = browser.contexts[0]
+    pg = ctx.new_page()
+    pg.goto("http://localhost:3000/disputes/mine", wait_until="networkidle")
+    html = pg.content()
+    print("CANARY in HTML:", "LEAK_CANARY_xxx" in html)
+    # Also fetch the RSC chunk directly — this is where field projections leak
+    rsc = pg.evaluate("""async () => (await fetch('/disputes/mine', { headers: { 'RSC': '1' } })).text()""")
+    print("CANARY in RSC:", "LEAK_CANARY_xxx" in rsc)
+```
+
+The RSC fetch is the most decisive evidence — Next.js serializes server-component props to that chunk, so any field projected by the SQL but used as a prop to a client component will be visible there.
+
+### REST seeding for moderation queues
+
+When testing pagination or filter behaviour on admin queues, you usually need to seed >50 rows. The fastest way:
+
+```bash
+# Bulk insert via PostgREST POST with array body
+python3 - <<PY
+import json, urllib.request, os
+url=os.environ['NEXT_PUBLIC_SUPABASE_URL']+"/rest/v1/user_verifications"
+svc=os.environ['SUPABASE_SERVICE_ROLE_KEY']
+rows=[{"user_id":"<existing-profile-id>","requested_stage":"studying_german",
+       "verification_type":"manual_confirmation","status":"pending",
+       "evidence_summary":f"devin-sec-pending #{i+1}"} for i in range(51)]
+req=urllib.request.Request(url,data=json.dumps(rows).encode(),headers={
+    "apikey":svc,"Authorization":f"Bearer {svc}",
+    "Content-Type":"application/json","Prefer":"return=minimal"},method="POST")
+print(urllib.request.urlopen(req).status)
+PY
+```
+
+Always tag seeded rows with a recognisable prefix (e.g. `evidence_summary LIKE 'devin-sec-pending #%'`) so cleanup is a one-line DELETE.
+
+Key check constraints to remember (migration 0002):
+- `organizations.verification_status` ∈ {unverified, pending_review, basic_verified, trusted_partner, recently_updated, expired, rejected, suspended, revoked} — note `pending_review`, NOT `verified`.
+- `job_orders.status` ∈ {draft, pending_verification, published, closing_soon, expired, filled, under_review, suspended, rejected}; only `published` and `closing_soon` are public.
+- `user_verifications.verification_type` and `requested_stage` are enum-checked — cribbing the values straight from the migration is faster than guessing.
+
+### Pagination assertions for admin queues
+
+The shared `<AdminPagination>` component renders `Trang <pageNum> / <totalPages> · <totalCount> mục` and `Trước` / `Sau` buttons. The card description is `<totalCount> yêu cầu (đang xem <list.length>)`. To prove pagination is wired correctly:
+
+1. Seed exactly 51 rows so total count and page boundary are unambiguous.
+2. Visit `/admin/<queue>` (page 1). Assert: badge shows `51 yêu cầu (đang xem 50)`, footer shows `Trang 1 / 2 · 51 mục`, `Sau` is visible / `Trước` hidden.
+3. Click `Sau` → URL becomes `/admin/<queue>?<filter>=<value>&page=2`. Assert: `(đang xem 1)`, `Trang 2 / 2 · 51 mục`, `Trước` visible / `Sau` hidden, AND the filter param is still in the URL.
+
+If step 3 drops the filter from the URL, the `<AdminPagination>` `params` prop wasn't wired up by that page.
+
 ## Recording — what to capture
 
 Keep the recording short and high-signal:
@@ -100,18 +186,21 @@ Keep the recording short and high-signal:
 - `test_start` / `assertion` per assertion in the plan.
 - The full register form submission, the /admin redirect, the post-promotion /admin page render, and the logout → /dashboard bounce are the most informative scenes.
 
-DevTools / browser console interactions are fine to omit — running the privilege-escalation test via `curl` from the shell is faster and produces cleaner evidence (HTTP status + JSON in the test report).
+DevTools / browser console interactions are fine to omit — running the privilege-escalation test via `curl` from the shell is faster and produces cleaner evidence (HTTP status + JSON in the test report). Same goes for canary-string checks: prefer Playwright-over-CDP scripted checks (text output) over screenshots of devtools.
 
 ## Cleanup
 
 - Delete the throwaway project (or rotate keys at Project Settings → API → "Reset anon" / "Reset service_role") if the keys touched chat logs.
 - Re-enable Confirm email if you toggled it off.
 - Stop the dev server.
+- For seeded test rows on a permanent project, use predictable slugs / sentinel strings so a single `DELETE … WHERE slug LIKE 'devin-sec-%'` cleans up.
 
 ## Devin secrets needed
 
 - `NEXT_PUBLIC_SUPABASE_URL` (plain, not sensitive)
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (plain, sensitive — request via secret UI; subject to RLS but still worth treating as sensitive)
 - `SUPABASE_SERVICE_ROLE_KEY` (plain, sensitive — bypasses RLS; never expose to the client)
+- `TEST_ADMIN_EMAIL` (plain, not sensitive — email of an existing profile with `role IN (admin, super_admin)`)
+- `TEST_ADMIN_PASSWORD` (plain, sensitive — password for `TEST_ADMIN_EMAIL`; alternative: reset via Auth admin API at session start)
 
 Always present three options when asking: skip / session-only / org-scoped permanent.
