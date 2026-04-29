@@ -27,20 +27,20 @@ import { formatDate } from "@/lib/utils";
 
 const NAV = [
   { href: "/admin", label: "Tổng quan", icon: <LayoutDashboard className="h-4 w-4" /> },
-  { href: "#", label: "Người dùng", icon: <Users className="h-4 w-4" /> },
-  { href: "#", label: "Trung tâm", icon: <GraduationCap className="h-4 w-4" /> },
-  { href: "#", label: "Doanh nghiệp", icon: <Building2 className="h-4 w-4" /> },
+  { href: "/admin/users", label: "Người dùng", icon: <Users className="h-4 w-4" /> },
+  { href: "/admin/centers", label: "Trung tâm", icon: <GraduationCap className="h-4 w-4" /> },
+  { href: "/admin/companies", label: "Doanh nghiệp", icon: <Building2 className="h-4 w-4" /> },
   { href: "/admin/job-orders", label: "Đơn tuyển", icon: <Briefcase className="h-4 w-4" /> },
   { href: "/admin/sponsored", label: "Nội dung tài trợ", icon: <Briefcase className="h-4 w-4" /> },
   { href: "/admin/reviews", label: "Reviews", icon: <MessagesSquare className="h-4 w-4" /> },
-  { href: "#", label: "Bài cộng đồng", icon: <MessagesSquare className="h-4 w-4" /> },
+  { href: "/admin/community", label: "Bài cộng đồng", icon: <MessagesSquare className="h-4 w-4" /> },
   { href: "/admin/reports", label: "Báo cáo (Reports)", icon: <Flag className="h-4 w-4" /> },
   { href: "/admin/disputes", label: "Khiếu nại (Disputes)", icon: <Gavel className="h-4 w-4" /> },
   { href: "/admin/verifications", label: "Verification (User)", icon: <ShieldCheck className="h-4 w-4" /> },
   { href: "/admin/organization-verifications", label: "Verification (Organization)", icon: <ShieldCheck className="h-4 w-4" /> },
   { href: "/admin/audit-logs", label: "Audit logs", icon: <ScrollText className="h-4 w-4" /> },
-  { href: "#", label: "Analytics", icon: <BarChart3 className="h-4 w-4" /> },
-  { href: "#", label: "Cài đặt", icon: <Settings className="h-4 w-4" /> },
+  { href: "/admin/analytics", label: "Analytics", icon: <BarChart3 className="h-4 w-4" /> },
+  { href: "/admin/settings", label: "Cài đặt", icon: <Settings className="h-4 w-4" /> },
 ];
 
 const userTrend = Array.from({ length: 14 }).map((_, i) => ({

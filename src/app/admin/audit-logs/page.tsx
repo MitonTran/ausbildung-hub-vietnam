@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { AdminBackLink } from "@/components/admin-back-link";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -216,6 +218,7 @@ export default async function AdminAuditLogsPage({
 
   return (
     <div className="container max-w-6xl space-y-6 py-10">
+      <AdminBackLink />
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Audit logs</h1>
         <p className="text-sm text-muted-foreground">

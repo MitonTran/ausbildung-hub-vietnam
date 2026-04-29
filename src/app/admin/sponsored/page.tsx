@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { AdminBackLink } from "@/components/admin-back-link";
+
 import { ContentTypeBadge } from "@/components/content-type-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -110,6 +112,7 @@ export default async function AdminSponsoredPage() {
 
   return (
     <div className="container max-w-5xl space-y-6 py-10">
+      <AdminBackLink />
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">
           Quản lý nội dung tài trợ
