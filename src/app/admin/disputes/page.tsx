@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { AdminBackLink } from "@/components/admin-back-link";
+
 import { AdminPagination } from "@/components/admin-pagination";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -107,6 +109,7 @@ export default async function AdminDisputesPage({
 
   return (
     <div className="container max-w-5xl space-y-6 py-10">
+      <AdminBackLink />
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
           Khiếu nại (Disputes)

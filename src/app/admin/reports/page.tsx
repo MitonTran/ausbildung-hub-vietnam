@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { AdminBackLink } from "@/components/admin-back-link";
+
 import { AdminPagination } from "@/components/admin-pagination";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -158,6 +160,7 @@ export default async function AdminReportsPage({
 
   return (
     <div className="container max-w-6xl space-y-6 py-10">
+      <AdminBackLink />
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Báo cáo nội dung</h1>
         <p className="text-sm text-muted-foreground">

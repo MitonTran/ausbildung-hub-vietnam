@@ -1,13 +1,14 @@
-"use client";
-
-import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Search, Menu, Bell } from "lucide-react";
+import { Search, Bell } from "lucide-react";
+
 import { cn } from "@/lib/utils";
+import { getCurrentProfile, getCurrentUser } from "@/lib/supabase/server";
+import { isAdminRole } from "@/lib/supabase/types";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { HeaderMobileMenu } from "@/components/header-mobile-menu";
+import { signOutAction } from "@/app/(auth)/actions";
 
 const NAV = [
   { href: "/", label: "Trang chủ" },
@@ -19,9 +20,14 @@ const NAV = [
   { href: "/pricing", label: "Bảng giá" },
 ];
 
-export function SiteHeader() {
-  const pathname = usePathname();
-  const [open, setOpen] = React.useState(false);
+export async function SiteHeader() {
+  const [user, profile] = await Promise.all([
+    getCurrentUser(),
+    getCurrentProfile(),
+  ]);
+  const userLabel = profile?.full_name ?? profile?.email ?? user?.email ?? "Tài khoản";
+  const avatarInitial = userLabel.slice(0, 1).toUpperCase();
+  const canSeeAdmin = isAdminRole(profile?.role);
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/30 bg-background/70 backdrop-blur-xl">
@@ -41,26 +47,18 @@ export function SiteHeader() {
         </Link>
 
         <nav className="hidden lg:flex items-center gap-1">
-          {NAV.map((item) => {
-            const active =
-              item.href === "/"
-                ? pathname === "/"
-                : pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-                  active
-                    ? "text-primary bg-primary/10"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
-                )}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
+          {NAV.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+                "text-muted-foreground hover:text-foreground hover:bg-muted/40",
+              )}
+            >
+              {item.label}
+            </Link>
+          ))}
         </nav>
 
         <div className="flex items-center gap-2">
@@ -73,54 +71,46 @@ export function SiteHeader() {
           <LanguageSwitcher />
           <ThemeToggle />
           <div className="hidden md:flex items-center gap-2">
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/login">Đăng nhập</Link>
-            </Button>
-            <Button asChild variant="gradient" size="sm">
-              <Link href="/register">Đăng ký</Link>
-            </Button>
+            {user ? (
+              <>
+                {canSeeAdmin ? (
+                  <Button asChild variant="ghost" size="sm">
+                    <Link href="/admin">Admin</Link>
+                  </Button>
+                ) : null}
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/dashboard" className="max-w-[180px] truncate">
+                    <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
+                      {avatarInitial}
+                    </span>
+                    {userLabel}
+                  </Link>
+                </Button>
+                <form action={signOutAction}>
+                  <Button type="submit" variant="outline" size="sm">
+                    Đăng xuất
+                  </Button>
+                </form>
+              </>
+            ) : (
+              <>
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/login">Đăng nhập</Link>
+                </Button>
+                <Button asChild variant="gradient" size="sm">
+                  <Link href="/register">Đăng ký</Link>
+                </Button>
+              </>
+            )}
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            onClick={() => setOpen((v) => !v)}
-            aria-label="Mở menu"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
+          <HeaderMobileMenu
+            nav={NAV}
+            userLabel={user ? userLabel : null}
+            avatarInitial={avatarInitial}
+            canSeeAdmin={canSeeAdmin}
+          />
         </div>
       </div>
-
-      {open && (
-        <div className="lg:hidden border-t border-border/30 bg-background/95 backdrop-blur-xl">
-          <div className="container py-3 flex flex-col gap-1">
-            {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setOpen(false)}
-                className={cn(
-                  "rounded-lg px-3 py-2 text-sm font-medium",
-                  (item.href === "/" ? pathname === "/" : pathname.startsWith(item.href))
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
-                )}
-              >
-                {item.label}
-              </Link>
-            ))}
-            <div className="grid grid-cols-2 gap-2 pt-2">
-              <Button asChild variant="outline" size="sm">
-                <Link href="/login">Đăng nhập</Link>
-              </Button>
-              <Button asChild variant="gradient" size="sm">
-                <Link href="/register">Đăng ký</Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </header>
   );
 }
