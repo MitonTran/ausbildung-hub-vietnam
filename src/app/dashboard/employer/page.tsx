@@ -14,6 +14,8 @@ import { DashboardShell } from "@/components/dashboard-shell";
 import { LineChart } from "@/components/charts/line-chart";
 import { BarChart } from "@/components/charts/bar-chart";
 
+import { requireEmployerDashboardAccess } from "@/lib/auth/route-protection";
+
 const NAV = [
   { href: "/dashboard/employer", label: "Tổng quan", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "#", label: "Đơn tuyển", icon: <Briefcase className="h-4 w-4" /> },
@@ -37,7 +39,8 @@ const funnel = [
   { name: "Đã chốt", value: 36 },
 ];
 
-export default function EmployerDashboardPage() {
+export default async function EmployerDashboardPage() {
+  await requireEmployerDashboardAccess();
   return (
     <DashboardShell title="Nhà tuyển dụng" subtitle="Siemens AG · Đối tác xác minh" nav={NAV}>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

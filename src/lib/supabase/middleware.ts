@@ -12,8 +12,11 @@ import { getSupabaseAnonKey, getSupabaseUrl } from "./env";
  * the last cookie when multiple are written in a single refresh, which
  * leads to random logouts and corrupted sessions.
  */
-export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({ request: { headers: request.headers } });
+export async function updateSession(
+  request: NextRequest,
+  requestHeaders: Headers = request.headers,
+) {
+  let response = NextResponse.next({ request: { headers: requestHeaders } });
 
   const supabase = createServerClient(getSupabaseUrl(), getSupabaseAnonKey(), {
     cookies: {
@@ -24,7 +27,7 @@ export async function updateSession(request: NextRequest) {
         cookiesToSet.forEach(({ name, value, options }) => {
           request.cookies.set({ name, value, ...options });
         });
-        response = NextResponse.next({ request: { headers: request.headers } });
+        response = NextResponse.next({ request: { headers: requestHeaders } });
         cookiesToSet.forEach(({ name, value, options }) => {
           response.cookies.set({ name, value, ...options });
         });

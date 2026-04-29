@@ -15,6 +15,8 @@ import { DashboardShell } from "@/components/dashboard-shell";
 import { LineChart } from "@/components/charts/line-chart";
 import { DonutChart } from "@/components/charts/donut-chart";
 
+import { requireCenterDashboardAccess } from "@/lib/auth/route-protection";
+
 const NAV = [
   { href: "/dashboard/center", label: "Tổng quan", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "#", label: "Quản lý lớp học", icon: <GraduationCap className="h-4 w-4" /> },
@@ -39,7 +41,8 @@ const sourceMix = [
   { name: "Referral", value: 130 },
 ];
 
-export default function CenterDashboardPage() {
+export default async function CenterDashboardPage() {
+  await requireCenterDashboardAccess();
   return (
     <DashboardShell title="Trung tâm" subtitle="Tổng quan trung tâm DeutschAkademie Hà Nội" nav={NAV}>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

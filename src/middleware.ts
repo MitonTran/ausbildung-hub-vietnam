@@ -4,12 +4,17 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { updateSession } from "@/lib/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", request.nextUrl.pathname);
+
   // No-op when Supabase env vars are absent (e.g. early Vercel preview).
   // Route-level redirects in /dashboard and /admin handle gating safely.
   if (!isSupabaseConfigured()) {
-    return NextResponse.next();
+    return NextResponse.next({
+      request: { headers: requestHeaders },
+    });
   }
-  return updateSession(request);
+  return updateSession(request, requestHeaders);
 }
 
 export const config = {
